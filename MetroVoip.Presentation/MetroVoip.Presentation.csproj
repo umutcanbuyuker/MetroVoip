@@ -10,4 +10,8 @@
     <Folder Include="ViewModels\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\MetroVoip.Business\MetroVoip.Business.csproj" />
+  </ItemGroup>
+
 </Project>

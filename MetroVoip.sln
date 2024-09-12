@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.10.35013.160
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MetroVoip.Data", "MetroVoip.Data\MetroVoip.Data.csproj", "{B5BDA7A9-8D8C-4C3E-8109-A8DECDE5FDCD}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MetroVoip.Inrastructure", "MetroVoip.Data\MetroVoip.Inrastructure.csproj", "{B5BDA7A9-8D8C-4C3E-8109-A8DECDE5FDCD}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MetroVoip.Business", "MetroVoip.Business\MetroVoip.Business.csproj", "{C1ADBEE0-3D93-44DC-B0F7-9C7B4E5CC324}"
 EndProject
