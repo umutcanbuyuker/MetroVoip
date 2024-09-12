@@ -1,0 +1,43 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.10.35013.160
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MetroVoip.Data", "MetroVoip.Data\MetroVoip.Data.csproj", "{B5BDA7A9-8D8C-4C3E-8109-A8DECDE5FDCD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MetroVoip.Business", "MetroVoip.Business\MetroVoip.Business.csproj", "{C1ADBEE0-3D93-44DC-B0F7-9C7B4E5CC324}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MetroVoip.Presentation", "MetroVoip.Presentation\MetroVoip.Presentation.csproj", "{4EF7110C-3050-43AB-B94B-ECEC3435E198}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MetroVoip.Common", "MetroVoip.Common\MetroVoip.Common.csproj", "{F10E1E15-DF92-4886-9249-8E41F14C197E}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B5BDA7A9-8D8C-4C3E-8109-A8DECDE5FDCD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B5BDA7A9-8D8C-4C3E-8109-A8DECDE5FDCD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B5BDA7A9-8D8C-4C3E-8109-A8DECDE5FDCD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B5BDA7A9-8D8C-4C3E-8109-A8DECDE5FDCD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C1ADBEE0-3D93-44DC-B0F7-9C7B4E5CC324}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C1ADBEE0-3D93-44DC-B0F7-9C7B4E5CC324}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C1ADBEE0-3D93-44DC-B0F7-9C7B4E5CC324}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C1ADBEE0-3D93-44DC-B0F7-9C7B4E5CC324}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4EF7110C-3050-43AB-B94B-ECEC3435E198}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4EF7110C-3050-43AB-B94B-ECEC3435E198}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4EF7110C-3050-43AB-B94B-ECEC3435E198}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4EF7110C-3050-43AB-B94B-ECEC3435E198}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F10E1E15-DF92-4886-9249-8E41F14C197E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F10E1E15-DF92-4886-9249-8E41F14C197E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F10E1E15-DF92-4886-9249-8E41F14C197E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F10E1E15-DF92-4886-9249-8E41F14C197E}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {A636BF20-79D6-42E1-AB45-98ABE073F90B}
+	EndGlobalSection
+EndGlobal
