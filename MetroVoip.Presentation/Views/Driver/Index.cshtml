@@ -1,0 +1,13 @@
+﻿@model List<MetroVoip.Common.Models.IntercomModel>
+
+
+<h2>Vagonlar</h2>
+<ul>
+    @foreach (var intercom in Model)
+    {
+        <li>
+                <a href="@Url.Action("SelectIntercom", "Driver", new { carriageNumber = intercom.CarriageNumber })">Konuşmayı Başlat</a>
+                <a href="@Url.Action("StopIntercom", "Driver", new { carriageNumber = intercom.CarriageNumber })">Konuşmayı Durdur</a>
+        </li>
+    }
+</ul>

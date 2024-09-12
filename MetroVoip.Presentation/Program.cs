@@ -1,3 +1,6 @@
+using MetroVoip.Business.Interfaces;
+using MetroVoip.Business.Services;
+
 namespace MetroVoip.Presentation
 {
     public class Program
@@ -8,6 +11,9 @@ namespace MetroVoip.Presentation
 
             // Add services to the container.
             builder.Services.AddControllersWithViews();
+            builder.Services.AddScoped<INotificationService, NotificationService>();
+            builder.Services.AddScoped<IIntercomService, IntercomService>();
+            builder.Services.AddScoped<IUdpCommunicationService, UdpCommunicationService>();
 
             var app = builder.Build();
 
