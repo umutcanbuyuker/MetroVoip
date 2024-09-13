@@ -11,8 +11,7 @@ namespace MetroVoip.Presentation
 
             // Add services to the container.
             builder.Services.AddControllersWithViews();
-            builder.Services.AddScoped<INotificationService, NotificationService>();
-            builder.Services.AddScoped<IIntercomService, IntercomService>();
+            builder.Services.AddSingleton<ICommunicationService, CommunicationService>();
             builder.Services.AddScoped<IUdpCommunicationService, UdpCommunicationService>();
 
             var app = builder.Build();

@@ -6,10 +6,16 @@ namespace MetroVoip.Presentation.Controllers
     public class DriverController : Controller
     {
         private readonly IIntercomService _intercomService;
-        public DriverController(IIntercomService intercomService)
+        private readonly ICommunicationService _communicationService;
+
+        public DriverController(IIntercomService intercomService, ICommunicationService communicationService)
         {
             _intercomService = intercomService;
+            _communicationService = communicationService;
         }
+
+        
+
         public async Task<IActionResult> Index()
         {
             var intercoms = await _intercomService.GetAllIntercomsAsync();
@@ -25,6 +31,20 @@ namespace MetroVoip.Presentation.Controllers
         {
             await _intercomService.StopCommunicationAsync(carriageNumber);
             return RedirectToAction("Index");
+        }
+
+        [HttpPost]
+        public IActionResult StartSpeaking(int kabinId)
+        {
+            _communicationService.StartSpeaking(kabinId);
+            return Ok();
+        }
+
+        [HttpPost]
+        public IActionResult StopSpeaking(int kabinId)
+        {
+            _communicationService.StopSpeaking(kabinId);
+            return Ok();
         }
     }
 }

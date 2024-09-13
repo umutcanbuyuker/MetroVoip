@@ -1,13 +1,65 @@
-﻿@model List<MetroVoip.Common.Models.IntercomModel>
+﻿<button class="speakButton" data-kabin="1">Kabin 1</button>
+<button class="speakButton" data-kabin="2">Kabin 2</button>
+<button class="speakButton" data-kabin="3">Kabin 3</button>
+<button class="speakButton" data-kabin="4">Kabin 4</button>
 
+<script>
+    const speakButtons = document.querySelectorAll(".speakButton");
+    let activeKabin = null;
 
-<h2>Vagonlar</h2>
-<ul>
-    @foreach (var intercom in Model)
-    {
-        <li>
-                <a href="@Url.Action("SelectIntercom", "Driver", new { carriageNumber = intercom.CarriageNumber })">Konuşmayı Başlat</a>
-                <a href="@Url.Action("StopIntercom", "Driver", new { carriageNumber = intercom.CarriageNumber })">Konuşmayı Durdur</a>
-        </li>
+    speakButtons.forEach(button => {
+        button.addEventListener("mousedown", function () {
+            activeKabin = this.getAttribute("data-kabin");
+            startSpeaking(activeKabin);
+        });
+
+        button.addEventListener("mouseup", function () {
+            stopSpeaking(activeKabin);
+        });
+    });
+
+    function startSpeaking(kabin) {
+        $.ajax({
+            url: '@Url.Action("StartSpeaking", "Driver")',
+            type: 'POST',
+            data: { kabinId: kabin },
+            success: function (response) {
+                console.log(`Kabin ${kabin} ile konuşma başlatıldı.`);
+            },
+            error: function (error) {
+                console.log("Hata:", error);
+            }
+        });
     }
-</ul>
+
+    function stopSpeaking(kabin) {
+        $.ajax({
+            url: '@Url.Action("StopSpeaking", "Driver")',
+            type: 'POST',
+            data: { kabinId: kabin },
+            success: function (response) {
+                console.log(`Kabin ${kabin} ile konuşma durduruldu.`);
+            },
+            error: function (error) {
+                console.log("Hata:", error);
+            }
+        });
+    }
+</script>
+
+
+
+@*@model List<MetroVoip.Common.Models.IntercomModel>
+
+
+    <h2>Vagonlar</h2>
+    <ul>
+        @foreach (var intercom in Model)
+        {
+            <li>
+                    <a href="@Url.Action("SelectIntercom", "Driver", new { carriageNumber = intercom.CarriageNumber })">Konuşmayı Başlat</a>
+                    <a href="@Url.Action("StopIntercom", "Driver", new { carriageNumber = intercom.CarriageNumber })">Konuşmayı Durdur</a>
+            </li>
+        }
+    </ul>*@
+
