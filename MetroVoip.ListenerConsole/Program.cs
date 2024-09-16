@@ -8,7 +8,7 @@ namespace MetroVoip.ListenerConsole
     {
         static void Main(string[] args)
         {
-            int listenPort = 5000;
+            int listenPort = 8500;
 
             using (UdpClient udpClient = new UdpClient(listenPort))
             {
