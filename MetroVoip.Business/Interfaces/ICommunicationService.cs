@@ -2,7 +2,7 @@
 {
     public interface ICommunicationService
     {
-        void StartSpeaking(int kabinId);
-        void StopSpeaking(int kabinId);
+        Task StartSpeaking(int kabinId);
+        Task StopSpeaking(int kabinId);
     }
 }

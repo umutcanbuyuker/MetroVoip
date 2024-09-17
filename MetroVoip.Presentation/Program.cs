@@ -1,5 +1,6 @@
 using MetroVoip.Business.Interfaces;
 using MetroVoip.Business.Services;
+using MetroVoip.Presentation.Hubs;
 
 namespace MetroVoip.Presentation
 {
@@ -12,6 +13,16 @@ namespace MetroVoip.Presentation
             // Add services to the container.
             builder.Services.AddControllersWithViews();
             builder.Services.AddSingleton<ICommunicationService, CommunicationService>();
+            builder.Services.AddCors(builder =>
+            {
+                builder.AddPolicy("AllowAll", options =>
+                {
+                    options.AllowAnyOrigin()
+                        .AllowAnyMethod()
+                        .AllowAnyHeader();
+                });
+            }); 
+            builder.Services.AddSignalR();
 
             var app = builder.Build();
 
@@ -34,6 +45,8 @@ namespace MetroVoip.Presentation
                 name: "default",
                 pattern: "{controller=Home}/{action=Index}/{id?}");
 
+            app.MapHub<DriverHub>("/driverHub");
+            app.UseCors("AllowAll");
             app.Run();
         }
     }

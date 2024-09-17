@@ -1,0 +1,57 @@
+﻿@{
+    ViewData["Title"] = "Passenger Request";
+}
+
+
+<h2>Passenger Request Page</h2>
+<div class="row">
+    <div class="col-md-8 offset-2">
+        <div id="connectionState">
+        </div>
+        <div class="mb-3">
+        </div>
+        <hr />
+        <hr />
+        <div class="clearfix"></div>
+        <div class="col-md-8">
+        </div>
+    </div>
+</div>
+
+<div>
+    <h4>Bir kabin seçin ve sürücüye istek gönderin</h4>
+
+    <button id="cabin-1" class="requestButton btn btn-primary" data-kabin="1">1. Kabin İstek Gönder</button>
+    <button id="cabin-2" class="requestButton btn btn-primary" data-kabin="2">2. Kabin İstek Gönder</button>
+    <button id="cabin-3" class="requestButton btn btn-primary" data-kabin="3">3. Kabin İstek Gönder</button>
+    <button id="cabin-4" class="requestButton btn btn-primary" data-kabin="4">4. Kabin İstek Gönder</button>
+</div>
+
+<script>
+    const connection = new signalR.HubConnectionBuilder().withUrl("/driverHub").build();
+
+    function ShowConnectionState() {
+        $('#connectionState').html(`<div class="alert alert-success">Bağlantı Durumu : ${connection.connectionstate} </div>`);
+        console.log(connection.connectionState);
+    }
+
+    connection.start().then(() => {
+        ShowConnectionState();
+    }).catch((err) => {
+        ShowConnectionState();
+        console.log('Hata : ');
+    });
+
+    $('.requestButton').mousedown(function () {
+        var kabinNumarasi = $(this).data('kabin');
+        // Tıklama sırasında kabin numarasını gönder
+        connection.invoke("SendCabinRequestAsync", kabinNumarasi);
+    }).mouseup(function () {
+        var kabinNumarasi = $(this).data('kabin');
+        // Serbest bırakıldığında kabin numarasını gönder
+        connection.invoke("ReleaseCabinRequestAsync", kabinNumarasi);
+    });
+
+
+
+</script>
