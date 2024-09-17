@@ -19,12 +19,12 @@ namespace MetroVoip.Business.Services
             { 4, "127.0.0.3" }
         };
 
-        public void StartSpeaking(int kabinId)
+        public async Task StartSpeaking(int kabinId)
         {
             if (udpClient == null)
             {
                 string serverIP = kabinIPs[kabinId];
-                int serverPort = 3000;
+                int serverPort = 5000;
 
                 udpClient = new UdpClient();
                 IPEndPoint endPoint = new IPEndPoint(IPAddress.Parse(serverIP), serverPort);
@@ -35,9 +35,9 @@ namespace MetroVoip.Business.Services
                 };
 
                 // Mikrofon verisini UDP üzerinden gönderme
-                waveIn.DataAvailable += (sender, e) =>
+                waveIn.DataAvailable += async (sender, e) =>
                 {
-                    udpClient.Send(e.Buffer, e.BytesRecorded, endPoint);
+                    await udpClient.SendAsync(e.Buffer, e.BytesRecorded, endPoint);
                     Console.WriteLine($"Kabin {kabinId} ile veri gönderildi: {e.BytesRecorded} byte");
                 };
 
@@ -46,7 +46,7 @@ namespace MetroVoip.Business.Services
         }
 
         // Stop the communication
-        public void StopSpeaking(int kabinId)
+        public async Task StopSpeaking(int kabinId)
         {
             if (waveIn != null)
             {
@@ -62,6 +62,8 @@ namespace MetroVoip.Business.Services
                 udpClient = null;
                 Console.WriteLine($"UDP bağlantısı kapatıldı.");
             }
+
+            await Task.CompletedTask;
         }
     }
 }

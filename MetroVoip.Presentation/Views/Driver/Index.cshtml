@@ -1,8 +1,24 @@
-﻿<button class="speakButton" data-kabin="1">Kabin 1</button>
-<button class="speakButton" data-kabin="2">Kabin 2</button>
-<button class="speakButton" data-kabin="3">Kabin 3</button>
-<button class="speakButton" data-kabin="4">Kabin 4</button>
+﻿<div class="row">
+    <div class="col-md-8 offset-2">
+        <div id="connectionState">
+        </div>
+        <div class="mb-3">
+        </div>
+        <hr />
+        <hr />
+        <div class="clearfix"></div>
+        <div class="col-md-8">
+        </div>
+    </div>
+</div>
 
+<button id="cabin-1" class="speakButton btn btn-primary" data-kabin="1">Kabin 1</button>
+<button id="cabin-2" class="speakButton btn btn-primary" data-kabin="2">Kabin 2</button>
+<button id="cabin-3" class="speakButton btn btn-primary" data-kabin="3">Kabin 3</button>
+<button id="cabin-4" class="speakButton btn btn-primary" data-kabin="4">Kabin 4</button>
+
+
+@*Sürücünün kabindeki yolcu ile iletişimini sağlayan kısım.*@
 <script>
     const speakButtons = document.querySelectorAll(".speakButton");
     let activeKabin = null;
@@ -45,4 +61,31 @@
             }
         });
     }
+</script>
+@*SignalR ile yolcu tarafından bağlantı durumu ve isteği geldiğini görüntüle*@
+<script>
+    // SignalR bağlantısını başlat
+    const connection = new signalR.HubConnectionBuilder().withUrl("/driverHub").build();
+
+    function ShowConnectionState() {
+        $('#connectionState').html(`<div class="alert alert-success">Bağlantı Durumu : ${connection.connectionstate} </div>`);
+    }
+
+
+    connection.start().then(() => {
+        ShowConnectionState();
+    }).catch((err) => {
+        ShowConnectionState();
+        console.log('Hata : ');
+    });
+
+    connection.on("ReceiveCabinRequest", function (cabinId) {
+        // Gelen kabin isteğiyle ilgili butonun rengini değiştir
+        $("#cabin-" + cabinId).removeClass("btn-primary").addClass("btn-warning");
+    });
+
+    connection.on("ReceiveCabinRelease", function (cabinId) {
+        // Gelen kabin isteğiyle ilgili butonun rengini değiştir
+        $("#cabin-" + cabinId).removeClass("btn-warning").addClass("btn-primary");
+    });
 </script>

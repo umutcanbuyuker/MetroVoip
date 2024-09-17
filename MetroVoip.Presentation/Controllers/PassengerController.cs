@@ -5,14 +5,9 @@ namespace MetroVoip.Presentation.Controllers
 {
     public class PassengerController : Controller
     {
-        public PassengerController()
+        public async Task<IActionResult> Index()
         {
-        }
-
-        [HttpPost]
-        public IActionResult NotifyDriver(int carriageNumber)
-        {
-            return Ok();
+            return View();
         }
     }
 }
