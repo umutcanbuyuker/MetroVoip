@@ -17,16 +17,15 @@ namespace MetroVoip.Presentation.Controllers
         }
 
         [HttpPost]
-        public IActionResult StartSpeaking(int kabinId)
+        public IActionResult StartSpeaking(string ip, int rPort, int sPort)
         {
-            _communicationService.StartSpeaking(kabinId);
+            _communicationService.StartSpeaking(ip, rPort, sPort);
             return Ok();
         }
-
         [HttpPost]
-        public IActionResult StopSpeaking(int kabinId)
+        public IActionResult StopSpeaking(string ip)
         {
-            _communicationService.StopSpeaking(kabinId);
+            _communicationService.StopSpeaking(ip);
             return Ok();
         }
     }

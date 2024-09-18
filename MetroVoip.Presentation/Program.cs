@@ -12,6 +12,7 @@ namespace MetroVoip.Presentation
             // Add services to the container.
             builder.Services.AddControllersWithViews();
             builder.Services.AddSingleton<ICommunicationService, CommunicationService>();
+            builder.Services.AddSignalR();
 
             var app = builder.Build();
 
@@ -33,7 +34,7 @@ namespace MetroVoip.Presentation
             app.MapControllerRoute(
                 name: "default",
                 pattern: "{controller=Home}/{action=Index}/{id?}");
-
+            app.MapHub<NotificationHub>("/notificationHub"); // SignalR Hub'ý ekleyin
             app.Run();
         }
     }

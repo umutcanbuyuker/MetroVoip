@@ -8,11 +8,11 @@ namespace MetroVoip.ListenerConsole
     {
         static void Main(string[] args)
         {
-            int listenPort = 8500;
-
+            int listenPort = 5000;
+            string serverIP = "127.0.0.1";
             using (UdpClient udpClient = new UdpClient(listenPort))
             {
-                IPEndPoint remoteEndPoint = new IPEndPoint(IPAddress.Parse("10.2.20.27"), listenPort);
+                IPEndPoint remoteEndPoint = new IPEndPoint(IPAddress.Parse(serverIP), listenPort);
                 Console.WriteLine($"UDP sunucusu {listenPort} portunda dinliyor...");
 
                 // Ses verisini hoparlörde çalmak için WaveOut ve BufferedWaveProvider kullanıyoruz
@@ -31,7 +31,6 @@ namespace MetroVoip.ListenerConsole
                     bufferedWaveProvider.AddSamples(receivedBytes, 0, receivedBytes.Length);
                 }
             }
-
         }
     }
 }

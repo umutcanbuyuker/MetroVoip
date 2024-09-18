@@ -1,0 +1,38 @@
+﻿@{
+    ViewData["Title"] = "Dinleyici Paneli";
+}
+@model ListenerInfo
+
+<h2>Bildirim Gönder</h2>
+<form id="notificationForm">
+    <button type="button" onclick="sendNotification()">Bildirim Gönder</button>
+</form>
+
+@section Scripts {
+    <script type="text/javascript">
+    const connection = new signalR.HubConnectionBuilder().withUrl("/notificationHub").build();
+
+    connection.start().then(function () {
+        // Bağlantı kurulduktan sonra registerListener ve sendNotification fonksiyonlarını çağırabilirsiniz
+        registerListener();
+        // sendNotification() gibi diğer işlemleri buradan yapabilirsiniz
+    }).catch(function (err) {
+        return console.error(err.toString());
+    });
+
+    // Dinleyici formu bilgilerini al ve sunucuya gönder
+    function registerListener() {
+        connection.invoke("RegisterListener", "@Model.IpAddress.ToString()", @Model.sPort, @Model.rPort).catch(function (err) {
+            return console.error(err.toString());
+        });
+    }
+
+    // Bildirim gönderme işlemi
+    function sendNotification() {
+        connection.invoke("SendNotification").catch(function (err) {
+            return console.error(err.toString());
+        });
+    }
+    </script>
+
+}
