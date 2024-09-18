@@ -5,7 +5,7 @@ using System.Net.Sockets;
 
 namespace MetroVoip.Business.Services
 {
-    public class CommunicationService : ICommunicationService
+    public class DriverCommunicationService : IDriverCommunicationService
     {
         private UdpClient udpClient;
         private WaveInEvent waveIn;
@@ -19,12 +19,12 @@ namespace MetroVoip.Business.Services
             { 4, "127.0.0.3" }
         };
 
-        public async Task StartSpeaking(int kabinId)
+        public async Task StartSpeakingWithPassenger(int kabinId)
         {
             if (udpClient == null)
             {
                 string serverIP = kabinIPs[kabinId];
-                int serverPort = 5000;
+                int serverPort = 9500;
 
                 udpClient = new UdpClient();
                 IPEndPoint endPoint = new IPEndPoint(IPAddress.Parse(serverIP), serverPort);
@@ -45,8 +45,8 @@ namespace MetroVoip.Business.Services
             }
         }
 
-        // Stop the communication
-        public async Task StopSpeaking(int kabinId)
+        // Stop the communication with passenger.
+        public async Task StopSpeakingWithPassenger(int kabinId)
         {
             if (waveIn != null)
             {
@@ -65,5 +65,33 @@ namespace MetroVoip.Business.Services
 
             await Task.CompletedTask;
         }
+
+        public async Task StartListeningPassenger(int kabinId)
+        {
+            int listenPort = 9000;
+
+            using (UdpClient udpClient = new UdpClient(listenPort))
+            {
+                IPEndPoint remoteEndPoint = new IPEndPoint(IPAddress.Any, listenPort);
+                Console.WriteLine($"UDP sunucusu {listenPort} portunda dinliyor...");
+
+                // Ses verisini hoparlörde çalmak için WaveOut ve BufferedWaveProvider kullanıyoruz
+                var waveOut = new WaveOutEvent();
+                var bufferedWaveProvider = new BufferedWaveProvider(new WaveFormat(8000, 16, 1)); // 8kHz, 16bit, mono
+                waveOut.Init(bufferedWaveProvider);
+                waveOut.Play();
+
+                while (true)
+                {
+                    // UDP paketini al
+                    byte[] receivedBytes = udpClient.Receive(ref remoteEndPoint);
+                    Console.WriteLine($"Veri alındı: {receivedBytes.Length} byte");
+
+                    // Alınan ses verisini hoparlörde oynat
+                    bufferedWaveProvider.AddSamples(receivedBytes, 0, receivedBytes.Length);
+                }
+            }
+        }
+        
     }
 }

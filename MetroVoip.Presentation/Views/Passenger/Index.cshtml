@@ -21,17 +21,59 @@
 <div>
     <h4>Bir kabin seçin ve sürücüye istek gönderin</h4>
 
-    <button id="cabin-1" class="requestButton btn btn-primary" data-kabin="1">1. Kabin İstek Gönder</button>
-    <button id="cabin-2" class="requestButton btn btn-primary" data-kabin="2">2. Kabin İstek Gönder</button>
-    <button id="cabin-3" class="requestButton btn btn-primary" data-kabin="3">3. Kabin İstek Gönder</button>
-    <button id="cabin-4" class="requestButton btn btn-primary" data-kabin="4">4. Kabin İstek Gönder</button>
+    <button id="cabin-1" class="requestButton btn btn-primary" data-kabin="1">Kabin1 - Press</button>
+    <button id="cabin-2" class="requestButton btn btn-primary" data-kabin="2">Kabin2 - Press</button>
+    <button id="cabin-3" class="requestButton btn btn-primary" data-kabin="3">Kabin3 - Press</button>
+    <button id="cabin-4" class="requestButton btn btn-primary" data-kabin="4">Kabin4 - Press</button>
 </div>
+
+<script>
+    const speakButtons = document.querySelectorAll(".requestButton");
+    let activeKabin = null;
+
+speakButtons.forEach(button => {
+    button.addEventListener("mousedown", function () {
+        startSpeaking();
+    });
+
+    button.addEventListener("mouseup", function () {
+        stopSpeaking();
+    });
+});
+
+function startSpeaking() {
+    $.ajax({
+        url: '@Url.Action("StartSpeakingWithDriver", "Passenger")',
+        type: 'POST',
+        success: function (response) {
+            console.log(`Sürücü ile konuşma başlatıldı.`);
+        },
+        error: function (error) {
+            console.log("Hata:", error);
+        }
+    });
+}
+
+function stopSpeaking() {
+    $.ajax({
+        url: '@Url.Action("StopSpeakingWithDriver", "Passenger")',
+        type: 'POST',
+        success: function (response) {
+            console.log(`Sürücü ile konuşma durduruldu.`);
+        },
+        error: function (error) {
+            console.log("Hata:", error);
+        }
+    });
+}
+</script>
+
 
 <script>
     const connection = new signalR.HubConnectionBuilder().withUrl("/driverHub").build();
 
     function ShowConnectionState() {
-        $('#connectionState').html(`<div class="alert alert-success">Bağlantı Durumu : ${connection.connectionstate} </div>`);
+        $('#connectionState').html(`<div class="alert alert-success">Bağlantı Başarılı</div>`);
         console.log(connection.connectionState);
     }
 
@@ -49,9 +91,26 @@
     }).mouseup(function () {
         var kabinNumarasi = $(this).data('kabin');
         // Serbest bırakıldığında kabin numarasını gönder
-        connection.invoke("ReleaseCabinRequestAsync", kabinNumarasi);
+        connection.invoke("SendReleaseCabinRequestAsync", kabinNumarasi);
     });
 
+    connection.on("ReceiveDriverRequest", function (cabinId) {
+        // Gelen kabin isteğiyle ilgili butonun rengini değiştir
+        startListeningDriver();
+    });
 
-
+    function startListeningDriver() {
+        $.ajax({
+            url: '@Url.Action("StartListeningDriver", "Passenger")',
+            type: 'POST',
+            data: {},
+            success: function (response) {
+                console.log(`Sürücü dinlemeye başlandı`);
+            },
+            error: function (error) {
+                console.log("Hata:", error);
+            }
+        });
+    }
+     
 </script>
