@@ -5,9 +5,9 @@ namespace MetroVoip.Presentation.Controllers
 {
     public class DriverController : Controller
     {
-        private readonly ICommunicationService _communicationService;
+        private readonly IDriverCommunicationService _communicationService;
 
-        public DriverController(ICommunicationService communicationService)
+        public DriverController(IDriverCommunicationService communicationService)
         {
             _communicationService = communicationService;
         }
@@ -17,16 +17,23 @@ namespace MetroVoip.Presentation.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> StartSpeaking(int kabinId)
+        public async Task<IActionResult> StartSpeakingWithPassenger(int kabinId)
         {
-            await _communicationService.StartSpeaking(kabinId);
+            await _communicationService.StartSpeakingWithPassenger(kabinId);
             return Ok();
         }
 
         [HttpPost]
-        public async Task<IActionResult> StopSpeaking(int kabinId)
+        public async Task<IActionResult> StopSpeakingWithPassenger(int kabinId)
         {
-            await _communicationService.StopSpeaking(kabinId);
+            await _communicationService.StopSpeakingWithPassenger(kabinId);
+            return Ok();
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> StartListeningPassenger(int kabinId) 
+        {
+            await _communicationService.StartListeningPassenger(kabinId);
             return Ok();
         }
     }

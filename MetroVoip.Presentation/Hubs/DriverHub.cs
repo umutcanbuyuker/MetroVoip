@@ -14,9 +14,13 @@ namespace MetroVoip.Presentation.Hubs
         {
             await Clients.All.SendAsync("ReceiveCabinRequest", cabinId);
         }
-        public async Task ReleaseCabinRequestAsync(int cabinId)
+        public async Task SendReleaseCabinRequestAsync(int cabinId)
         {
             await Clients.All.SendAsync("ReceiveCabinRelease", cabinId);
+        }
+        public async Task SendDriverRequestAsync(int cabinId)
+        {
+            await Clients.All.SendAsync("ReceiveDriverRequest", cabinId);
         }
     }
 }

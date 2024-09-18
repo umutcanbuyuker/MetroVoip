@@ -12,7 +12,9 @@ namespace MetroVoip.Presentation
 
             // Add services to the container.
             builder.Services.AddControllersWithViews();
-            builder.Services.AddSingleton<ICommunicationService, CommunicationService>();
+            builder.Services.AddSingleton<ICommunicationService, DriverCommunicationService>();
+            builder.Services.AddSingleton<IPassengerCommunicationService, PassengerCommunicationService>();
+
             builder.Services.AddCors(builder =>
             {
                 builder.AddPolicy("AllowAll", options =>
