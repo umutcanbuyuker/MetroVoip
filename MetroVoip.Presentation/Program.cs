@@ -37,6 +37,7 @@ namespace MetroVoip.Presentation
                 name: "default",
                 pattern: "{controller=Home}/{action=Index}/{id?}");
             app.MapHub<NotificationHub>("/notificationHub"); // SignalR Hub'ý ekleyin
+            app.MapHub<VoiceChatHub>("/voiceChatHub");
             app.Run();
         }
     }
