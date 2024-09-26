@@ -8,8 +8,65 @@
     <button type="button" onclick="sendNotification()">Bildirim Gönder</button>
 </form>
 
-@section Scripts {
-    <script type="text/javascript">
+<br />
+<button type="button" class="btn btn-primary basbas">konuş</button>
+
+
+<script type="text/javascript">
+
+    $(".basbas").on("mousedown", function () {
+         $.ajax({
+             url: '@Url.Action("StartSpeaking", "Passenger")',
+             type: 'POST',
+             data: { ip: '@Model.RequestIpAddress.ToString()', rPort: @Model.ListenPort, sPort: @Model.SpeakPort },
+             success: function (response) {
+                 console.log(` ile konuşma başlatıldı.`);
+             },
+             error: function (error) {
+                 console.log("Hata:", error);
+             }
+         });
+
+         $.ajax({
+             url: '@Url.Action("StartListening", "Passenger")',
+             type: 'POST',
+             data: { ip: '@Model.IpAddress.ToString()', rPort: @Model.ListenPort, sPort: @Model.SpeakPort },
+             success: function (response) {
+                 console.log(` ile konuşma başlatıldı.`);
+             },
+             error: function (error) {
+                 console.log("Hata:", error);
+             }
+         });
+    });
+
+
+    $(".basbas").on("mouseup", function () {
+        $.ajax({
+            url: '@Url.Action("StopSpeaking", "Passenger")',
+            type: 'POST',
+            data: { ip: '@Model.RequestIpAddress.ToString()'},
+            success: function (response) {
+                console.log(` ile konuşma durduruldu.`);
+            },
+            error: function (error) {
+                console.log("Hata:", error);
+            }
+        });
+        $.ajax({
+            url: '@Url.Action("StopListening", "Passenger")',
+            type: 'POST',
+            data: { ip: '@Model.IpAddress.ToString()'},
+            success: function (response) {
+                console.log(` ile konuşma durduruldu.`);
+            },
+            error: function (error) {
+                console.log("Hata:", error);
+            }
+        });
+    });
+
+
     const connection = new signalR.HubConnectionBuilder().withUrl("/notificationHub").build();
 
     connection.start().then(function () {
@@ -22,7 +79,7 @@
 
     // Dinleyici formu bilgilerini al ve sunucuya gönder
     function registerListener() {
-        connection.invoke("RegisterListener", "@Model.IpAddress.ToString()", @Model.sPort, @Model.rPort).catch(function (err) {
+        connection.invoke("RegisterListener", "@Model.IpAddress.ToString()", @Model.SpeakPort, @Model.ListenPort).catch(function (err) {
             return console.error(err.toString());
         });
     }
@@ -33,6 +90,5 @@
             return console.error(err.toString());
         });
     }
-    </script>
+</script>
 
-}

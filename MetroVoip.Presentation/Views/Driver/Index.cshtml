@@ -14,62 +14,71 @@
         const connection = new signalR.HubConnectionBuilder().withUrl("/notificationHub").build();
 
         connection.start().then(function () {
-            sendNotification();
-            ReceiveNotification();
-            RemoveNotification();
+
         }).catch(function (err) {
             return console.error(err.toString());
         });
 
-        var Listeners = null;
         // Bağlı dinleyicileri alma
-        function sendNotification() {
-            connection.on("RegisterListener", function (listeners) {
-                Listeners = listeners;
-                console.log(Listeners);
-                const listenersContainer = document.getElementById("listenersContainer");
-                listenersContainer.innerHTML = "";
+        connection.on("RegisterListener", function (listeners) {
 
-                listeners.forEach(listener => {
-                    const button = document.createElement("button");
-                    button.textContent = `IP: ${listener.ipAddress}, sPort: ${listener.sPort}, rPort: ${listener.rPort}`;
-                    button.value = `${listener.ipAddress}-${listener.sPort}-${listener.rPort}`;
+            const listenersContainer = document.getElementById("listenersContainer");
+            listenersContainer.innerHTML = "";
 
-                    // Düğmeye tıklandığında yapılacak işlemi belirleyin
-                    button.addEventListener("click", function () {
-                        // Burada düğmeye tıklandığında yapılacak işlemi tanımlayabilirsiniz.
-                        console.log(`Listener clicked: IP: ${listener.ipAddress}, sPort: ${listener.sPort}, rPort: ${listener.rPort}`);
-                    });
-
-                    listenersContainer.appendChild(button);
-                });
-            });
-        }
-
-        function ReceiveNotification() {
-            connection.on("ReceiveNotification", function (listener) {
-                const notificationContainer = document.getElementById("notificationContainer");
+            listeners.forEach(listener => {
                 const button = document.createElement("button");
-                button.textContent = `IP: ${listener.ipAddress}, sPort: ${listener.sPort}, rPort: ${listener.rPort}`;
-                button.value = `${listener.ipAddress}-${listener.sPort}-${listener.rPort}`;
-                button.classList.add("speakingButton");
+                button.textContent = `IP: ${listener.ipAddress}, sPort: ${listener.speakPort}, rPort: ${listener.listenPort}`;
+                button.value = `${listener.ipAddress}-${listener.speakPort}-${listener.listenPort}`;
+
+                // Düğmeye tıklandığında yapılacak işlemi belirleyin
+                //button.addEventListener("click", function () {
+                    // Burada düğmeye tıklandığında yapılacak işlemi tanımlayabilirsiniz.
+                   // console.log(`Listener clicked: IP: ${listener.ipAddress}, sPort: ${listener.sPort}, rPort: ${listener.rPort}`);
+                //});
+
 
                 // Düğmeye tıklandığında yapılacak işlemi belirleyin
                 button.addEventListener("mousedown", function () {
-
-                    $.ajax({
-                        url: '@Url.Action("StartSpeaking", "Driver")',
-                        type: 'POST',
-                        data: { ip: listener.ipAddress.toString(), rPort: listener.rPort, sPort: listener.sPort },
-                        success: function (response) {
-                            console.log(` ile konuşma başlatıldı.`);
-                        },
-                        error: function (error) {
-                            console.log("Hata:", error);
-                        }
+                    connection.invoke("StartListening").catch(function (err) {
+                        return console.error(err.toString());
                     });
+                    connection.invoke("StartSpeaking").catch(function (err) {
+                        return console.error(err.toString());
+                    });
+                     $.ajax({
+                         url: '@Url.Action("StartSpeaking", "Driver")',
+                         type: 'POST',
+                         data: { ip: listener.ipAddress.toString(), rPort: listener.speakPort, sPort: listener.listenPort },
+                         success: function (response) {
+                             console.log(` ile konuşma başlatıldı.`);
+                         },
+                         error: function (error) {
+                             console.log("Hata:", error);
+                         }
+                     });
+
+                     $.ajax({
+                         url: '@Url.Action("StartListening", "Driver")',
+                         type: 'POST',
+                         data: { ip: listener.ipAddress.toString(), rPort: listener.speakPort, sPort: listener.listenPort },
+                         success: function (response) {
+                             console.log(` ile konuşma başlatıldı.`);
+                         },
+                         error: function (error) {
+                             console.log("Hata:", error);
+                         }
+                     });
                 });
+
+
                 button.addEventListener("mouseup", function () {
+                    connection.invoke("StopSpeaking").catch(function (err) {
+                        return console.error(err.toString());
+                    });
+
+                    connection.invoke("StopListening").catch(function (err) {
+                        return console.error(err.toString());
+                    });
                     $.ajax({
                         url: '@Url.Action("StopSpeaking", "Driver")',
                         type: 'POST',
@@ -81,23 +90,99 @@
                             console.log("Hata:", error);
                         }
                     });
+                    $.ajax({
+                        url: '@Url.Action("StopListening", "Driver")',
+                        type: 'POST',
+                        data: { ip: listener.ipAddress.toString()},
+                        success: function (response) {
+                            console.log(` ile konuşma durduruldu.`);
+                        },
+                        error: function (error) {
+                            console.log("Hata:", error);
+                        }
+                    });
                 });
-                notificationContainer.appendChild(button);
+
+
+
+                listenersContainer.appendChild(button);
             });
-        }
+        });
 
-        function RemoveNotification() {
-            connection.on("RemoveNotification", function (listener) {
 
-                const notificationContainer = document.getElementById("notificationContainer");
-                // Önceki bildirimleri temizle
-                const buttons = notificationContainer.querySelectorAll("button");
-                buttons.forEach(button => {
-                    if (button.textContent.includes(`IP: ${listener.ipAddress}, sPort: ${listener.sPort}, rPort: ${listener.rPort}`)) {
-                        notificationContainer.removeChild(button);
+
+
+        connection.on("ReceiveNotification", function (listener) {
+            const notificationContainer = document.getElementById("notificationContainer");
+            const button = document.createElement("button");
+            button.textContent = `IP: ${listener.ipAddress}, sPort: ${listener.sPort}, rPort: ${listener.rPort}, ConnectionId: ${listener.connectionId}`;
+            button.value = `${listener.ipAddress}-${listener.sPort}-${listener.rPort}`;
+
+            // Düğmeye tıklandığında yapılacak işlemi belirleyin
+            button.addEventListener("mousedown", function () {
+
+                $.ajax({
+                    url: '@Url.Action("StartSpeaking", "Driver")',
+                    type: 'POST',
+                    data: { ip: listener.ipAddress.toString(), rPort: listener.rPort, sPort: listener.sPort },
+                    success: function (response) {
+                        console.log(` ile konuşma başlatıldı.`);
+                    },
+                    error: function (error) {
+                        console.log("Hata:", error);
+                    }
+                });
+
+                $.ajax({
+                    url: '@Url.Action("StartListening", "Driver")',
+                    type: 'POST',
+                    data: { ip: listener.ipAddress.toString(), rPort: listener.rPort, sPort: listener.sPort },
+                    success: function (response) {
+                        console.log(` ile konuşma başlatıldı.`);
+                    },
+                    error: function (error) {
+                        console.log("Hata:", error);
                     }
                 });
             });
-        }
+            button.addEventListener("mouseup", function () {
+                $.ajax({
+                    url: '@Url.Action("StopSpeaking", "Driver")',
+                    type: 'POST',
+                    data: { ip: listener.ipAddress.toString()},
+                    success: function (response) {
+                        console.log(` ile konuşma durduruldu.`);
+                    },
+                    error: function (error) {
+                        console.log("Hata:", error);
+                    }
+                });
+                $.ajax({
+                    url: '@Url.Action("StopListening", "Driver")',
+                    type: 'POST',
+                    data: { ip: listener.ipAddress.toString()},
+                    success: function (response) {
+                        console.log(` ile konuşma durduruldu.`);
+                    },
+                    error: function (error) {
+                        console.log("Hata:", error);
+                    }
+                });
+            });
+            notificationContainer.appendChild(button);
+        });
+
+
+        connection.on("RemoveNotification", function (listener) {
+
+            const notificationContainer = document.getElementById("notificationContainer");
+            // Önceki bildirimleri temizle
+            const buttons = notificationContainer.querySelectorAll("button");
+            buttons.forEach(button => {
+                if (button.textContent.includes(`IP: ${listener.ipAddress}, sPort: ${listener.sPort}, rPort: ${listener.rPort}, ConnectionId: ${listener.connectionId}`)) {
+                    notificationContainer.removeChild(button);
+                }
+            });
+        });
     });
 </script>
