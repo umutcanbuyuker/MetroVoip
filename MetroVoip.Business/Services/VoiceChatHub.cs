@@ -1,10 +1,12 @@
 ﻿using Microsoft.AspNetCore.SignalR;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.Linq;
 
 public class VoiceChatHub : Hub
 {
     private static Dictionary<string, string> ConnectedPeers = new Dictionary<string, string>();
+    private static string AdminConnectionId = null;
 
     public async Task RegisterPeer(string peerId)
     {
@@ -14,31 +16,50 @@ public class VoiceChatHub : Hub
             ConnectedPeers[Context.ConnectionId] = peerId;
         }
 
+        // Bağlanan kullanıcıların listesini tüm kullanıcılara gönder
         await Clients.All.SendAsync("UpdatePeerList", ConnectedPeers.Values);
     }
 
-    public async Task RequestCall(string targetPeerId)
+    public async Task RegisterAdmin()
     {
-        // Aranan kullanıcıyı bul ve ona çağrı isteği gönder
-        var targetConnectionId = ConnectedPeers.FirstOrDefault(x => x.Value == targetPeerId).Key;
-        if (targetConnectionId != null)
-        {
-            await Clients.Client(targetConnectionId).SendAsync("ReceiveCallRequest", Context.ConnectionId);
-        }
+        AdminConnectionId = Context.ConnectionId;
+
+        // Admin'e tüm kullanıcıların listesini gönder
+        await Clients.Client(AdminConnectionId).SendAsync("UpdatePeerList", ConnectedPeers.Values);
     }
 
-    public async Task AcceptCall(string callerConnectionId)
+    public async Task StartVoiceCommunication(List<string> selectedPeers)
     {
-        await Clients.Client(callerConnectionId).SendAsync("CallAccepted");
+        // Yeni bir grup oluştur
+        string groupName = $"Group_{Guid.NewGuid()}";
+
+        // Seçilen her konuşmacıyı gruba ekle
+        foreach (var peerId in selectedPeers)
+        {
+            var connectionId = ConnectedPeers.FirstOrDefault(x => x.Value == peerId).Key;
+            if (!string.IsNullOrEmpty(connectionId))
+            {
+                await Groups.AddToGroupAsync(connectionId, groupName);
+            }
+        }
+
+        // Grup içindeki konuşmacılara sesli iletişim başlatmalarını söylüyoruz
+        await Clients.Group(groupName).SendAsync("StartVoiceCall", selectedPeers);
     }
 
     public override async Task OnDisconnectedAsync(Exception exception)
     {
-        // Kullanıcı bağlantısı kesildiğinde, onu listeden çıkar
         if (ConnectedPeers.ContainsKey(Context.ConnectionId))
         {
             ConnectedPeers.Remove(Context.ConnectionId);
         }
+
+        // Admin'e güncellenmiş Peer listesi gönder
+        if (AdminConnectionId != null && AdminConnectionId == Context.ConnectionId)
+        {
+            AdminConnectionId = null;
+        }
+
         await Clients.All.SendAsync("UpdatePeerList", ConnectedPeers.Values);
         await base.OnDisconnectedAsync(exception);
     }

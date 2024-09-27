@@ -1,117 +1,131 @@
 ﻿<!DOCTYPE html>
-<html lang="en">
+<html lang="tr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PeerJS SignalR Sesli Konuşma</title>
+    <title>Konuşmacı Paneli</title>
+    <!-- SignalR ve PeerJS Kütüphaneleri -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/signalr/5.0.11/signalr.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/peerjs@1.3.1/dist/peerjs.min.js"></script>
 </head>
 <body>
-    <h2>PeerJS SignalR Sesli Görüşme</h2>
+    <h1>Konuşmacı Paneli</h1>
+    <p>Peer ID'niz: <span id="peer-id"></span></p>
 
-    <div>
-        <label for="peer-id">Kendi Peer ID:</label>
-        <input type="text" id="peer-id" disabled>
-    </div>
-
-    <div>
-        <h3>Bağlı Kullanıcılar:</h3>
-        <ul id="peer-list"></ul>
-    </div>
-
-    <!-- Gelen ses akışlarını gösterecek dinamik bir container -->
+    <!-- Gelen ses akışlarını gösterecek container -->
     <div id="remote-audio-container"></div>
 
-
-    <!-- SignalR ve PeerJS kütüphaneleri -->
-    <script src="https://cdn.jsdelivr.net/npm/peerjs@1.3.1/dist/peerjs.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/5.0.12/signalr.min.js"></script>
-
     <script>
-        const peer = new Peer();  // PeerJS istemcisi başlatılıyor
-        const peerIdInput = document.getElementById('peer-id');
-        const peerList = document.getElementById('peer-list');
-        const remoteAudioContainer = document.getElementById('remote-audio-container');
-        let currentPeerId = ''; // Kendi Peer ID'mizi saklamak için
-        let mediaStream = null; // Kullanıcı mikrofon akışı
+        // PeerJS Başlatılıyor
+        const peer = new Peer();
 
-        const connection = new signalR.HubConnectionBuilder().withUrl("/voiceChatHub").build(); // SignalR bağlantısı
+        // SignalR Bağlantısı
+        const connection = new signalR.HubConnectionBuilder().withUrl("/voiceChatHub").build();
+        let peerId = null;
+        let connections = {}; // Diğer peer'larla olan bağlantıları saklamak için
 
-        // Kendi Peer ID'mizi alıyoruz ve ekrana yazıyoruz
+        // PeerJS Bağlantısı Açıldığında
         peer.on('open', (id) => {
-            currentPeerId = id;  // Kendi Peer ID'mizi saklıyoruz
-            peerIdInput.value = id;
+            peerId = id;
+            document.getElementById('peer-id').textContent = peerId;
+            console.log("PeerJS bağlantısı açıldı. Peer ID:", peerId);
 
-            // SignalR üzerinden sunucuya Peer ID'mizi kaydediyoruz
+            // SignalR Bağlantısını Başlat ve Peer ID'yi Kaydet
             connection.start().then(() => {
-                connection.invoke("RegisterPeer", id);
-            });
+                console.log("SignalR bağlantısı kuruldu.");
+                connection.invoke("RegisterPeer", peerId).catch(err => console.error("SignalR RegisterPeer hatası:", err));
+            }).catch(err => console.error("SignalR bağlantı hatası:", err));
         });
 
-        // SignalR'dan Peer ID listesi güncellemesi alındığında listeyi ekranda güncelliyoruz
-        connection.on("UpdatePeerList", (peers) => {
-            peerList.innerHTML = ''; // Listeyi temizle
-
-            peers.forEach(peerId => {
-                // Kendi Peer ID'mizi kontrol edip listeye eklemiyoruz
-                if (peerId !== currentPeerId) {
-                    const listItem = document.createElement('li');
-                    listItem.textContent = peerId;
-
-                    const callButton = document.createElement('button');
-                    callButton.textContent = 'Bağlan';
-                    callButton.onclick = () => initiateCall(peerId);
-
-                    listItem.appendChild(callButton);
-                    peerList.appendChild(listItem);
-                }
-            });
-        });
-
-        // Sesli arama başlatma fonksiyonu
-        function initiateCall(peerId) {
-            // Mikrofon erişimini al
+        // Gelen PeerJS Çağrılarını Yönetme
+        peer.on('call', (call) => {
+            console.log(`Incoming call from ${call.peer}`);
+            // Mikrofon erişimi isteyin
             navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
-                mediaStream = stream;  // Mikrofon akışını sakla
-                const call = peer.call(peerId, stream);
+                call.answer(stream); // Çağrıya cevap ver
 
-                // Karşı tarafın ses akışını dinleyip çalıyoruz
                 call.on('stream', (remoteStream) => {
-                    addRemoteStream(remoteStream, peerId);
+                    console.log(`Receiving stream from ${call.peer}`);
+                    addRemoteStream(remoteStream, call.peer);
+                });
+
+                call.on('close', () => {
+                    console.log(`Call with ${call.peer} closed.`);
+                    removeRemoteStream(call.peer);
+                });
+
+                call.on('error', (err) => {
+                    console.error(`Call error with ${call.peer}:`, err);
+                });
+            }).catch((err) => {
+                console.error('Mikrofon hatası:', err);
+            });
+        });
+
+        // SignalR'dan "StartVoiceCall" Mesajını Alma
+        connection.on("StartVoiceCall", (selectedPeers) => {
+            if (selectedPeers.includes(peerId)) {
+                console.log("Bağlantı başlatılıyor:", selectedPeers);
+                startCallWithPeers(selectedPeers);
+            }
+        });
+
+        // Seçilen Peer'larla Bağlantı Başlatma Fonksiyonu
+        function startCallWithPeers(peers) {
+            // Mikrofon akışını al
+            navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+                console.log("Local audio stream alındı.");
+                // Seçilen her peer'a bağlan
+                peers.forEach((targetPeerId) => {
+                    if (targetPeerId !== peerId && !(targetPeerId in connections)) {
+                        console.log(`Calling peer: ${targetPeerId}`);
+                        const call = peer.call(targetPeerId, stream);
+                        connections[targetPeerId] = call;
+
+                        call.on('stream', (remoteStream) => {
+                            console.log(`Receiving stream from ${targetPeerId}`);
+                            addRemoteStream(remoteStream, targetPeerId);
+                        });
+
+                        call.on('close', () => {
+                            console.log(`Call with ${targetPeerId} closed.`);
+                            removeRemoteStream(targetPeerId);
+                            delete connections[targetPeerId];
+                        });
+
+                        call.on('error', (err) => {
+                            console.error(`Call error with ${targetPeerId}:`, err);
+                        });
+                    }
                 });
             }).catch((err) => {
                 console.error('Mikrofon hatası:', err);
             });
         }
 
-        // Diğer kullanıcı bizi aradığında cevaplama
-        peer.on('call', (call) => {
-            if (mediaStream) {
-                call.answer(mediaStream);  // Ses akışımızı gönderiyoruz
-            }
-
-            // Karşı tarafın ses akışını dinleyip çalıyoruz
-            call.on('stream', (remoteStream) => {
-                addRemoteStream(remoteStream, call.peer);
-            });
-        });
-
-        // Gelen ses akışını oynatma fonksiyonu
+        // Remote Stream'i Ekleme Fonksiyonu
         function addRemoteStream(remoteStream, peerId) {
             let audioElement = document.getElementById(`audio-${peerId}`);
-
-            // Eğer o kullanıcı için zaten bir ses elemanı varsa tekrar eklemiyoruz
             if (!audioElement) {
                 audioElement = document.createElement('audio');
                 audioElement.id = `audio-${peerId}`;
                 audioElement.controls = true;
                 audioElement.autoplay = true;
-                remoteAudioContainer.appendChild(audioElement);
+                audioElement.srcObject = remoteStream;
+                document.getElementById('remote-audio-container').appendChild(audioElement);
+                console.log(`Remote audio element eklendi: ${peerId}`);
             }
-
-            // Yeni gelen ses akışını ses elementine bağla
-            audioElement.srcObject = remoteStream;
         }
 
+        // Remote Stream'i Kaldırma Fonksiyonu
+        function removeRemoteStream(peerId) {
+            const audioElement = document.getElementById(`audio-${peerId}`);
+            if (audioElement) {
+                audioElement.srcObject = null;
+                audioElement.remove();
+                console.log(`Remote audio element kaldırıldı: ${peerId}`);
+            }
+        }
     </script>
 </body>
 </html>

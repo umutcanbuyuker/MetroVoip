@@ -8,5 +8,9 @@ namespace MetroVoip.Presentation.Controllers
         {
             return View();
         }
+        public IActionResult Manager()
+        {
+            return View();
+        }
     }
 }
