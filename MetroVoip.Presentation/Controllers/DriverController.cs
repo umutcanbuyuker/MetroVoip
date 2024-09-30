@@ -1,4 +1,5 @@
 ﻿using MetroVoip.Business.Interfaces;
+using MetroVoip.Business.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MetroVoip.Presentation.Controllers
@@ -15,7 +16,22 @@ namespace MetroVoip.Presentation.Controllers
         {
             return View();
         }
-
+        public async Task<IActionResult> ConferenceCallUser()
+        {
+            return View();
+        }
+        public async Task<IActionResult> ConferenceCallManager()
+        {
+            return View();
+        }
+        public async Task<IActionResult> WebRtc()
+        {
+            return View();
+        }
+        public async Task<IActionResult> ConferenceCall()
+        {
+            return View();
+        }
         [HttpPost]
         public async Task<IActionResult> StartSpeakingWithPassenger(int kabinId)
         {

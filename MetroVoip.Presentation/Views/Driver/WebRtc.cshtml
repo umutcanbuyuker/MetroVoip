@@ -1,0 +1,109 @@
+﻿<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Birebir Görüşme</title>
+</head>
+<body>
+    <h1>Birebir WebRTC Sesli Görüşme</h1>
+    <button id="startCallBtn">Görüşmeyi Başlat</button>
+    <button id="endCallBtn">Görüşmeyi Sonlandır</button>
+    <div>
+        <p>Local Audio</p>
+        <audio id="localAudio" controls autoplay muted>
+        </audio>
+    </div>
+    <div>
+        <p>Remote Audio</p>
+        <audio id="remoteAudio" controls autoplay></audio>
+    </div>
+    <script>
+        let connection;
+        let peerConnection;
+        let localStream;
+        let remoteAudio = document.getElementById('remoteAudio');
+        let localAudio = document.getElementById('localAudio');
+
+        // SignalR bağlantısını başlat
+        async function startSignalR() {
+            connection = new signalR.HubConnectionBuilder()
+                .withUrl("/driverHub")
+                .build();
+
+            connection.on("YourConnectionId", (connectionId) => {
+                console.log("Bağlantı ID:", connectionId);
+            });
+
+            connection.on("ReceiveSignal", async (callerId, signal) => {
+                let message = JSON.parse(signal);
+
+                if (message.sdp) {
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(message.sdp));
+
+                    if (message.sdp.type === "offer") {
+                        const answer = await peerConnection.createAnswer();
+                        await peerConnection.setLocalDescription(answer);
+                        connection.invoke("SendSignal", callerId, JSON.stringify({ sdp: peerConnection.localDescription }));
+                    }
+                }
+
+                if (message.ice) {
+                    await peerConnection.addIceCandidate(new RTCIceCandidate(message.ice));
+                }
+            });
+
+            await connection.start();
+        }
+
+        // WebRTC için RTCPeerConnection oluşturma
+        async function startCall() {
+            peerConnection = new RTCPeerConnection({
+                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+            });
+
+            // Mikrofonu kullan
+            localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+            localAudio.srcObject = localStream;
+
+            // ICE adaylarını işleyin ve SignalR ile diğer tarafa gönderin
+            peerConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    connection.invoke("SendSignal", null, JSON.stringify({ ice: event.candidate }));
+                }
+            };
+
+            // Karşıdan gelen medya akışını ayarla
+            peerConnection.ontrack = (event) => {
+                remoteAudio.srcObject = event.streams[0];
+            };
+
+            // Görüşmeyi başlatmak için teklif oluştur ve gönder
+            const offer = await peerConnection.createOffer();
+            await peerConnection.setLocalDescription(offer);
+
+            connection.invoke("SendSignal", null, JSON.stringify({ sdp: peerConnection.localDescription }));
+        }
+
+        async function endCall() {
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+                localAudio.srcObject = null;
+                remoteAudio.srcObject = null;
+            }
+        }
+
+        document.getElementById('startCallBtn').addEventListener('click', async () => {
+            await startSignalR();
+            await startCall();
+        });
+
+        document.getElementById('endCallBtn').addEventListener('click', async () => {
+            await endCall();
+        });
+    </script>
+</body>
+</html>

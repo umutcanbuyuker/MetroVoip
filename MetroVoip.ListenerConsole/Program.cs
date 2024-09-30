@@ -11,7 +11,7 @@ namespace MetroVoip.ListenerConsole
             int listenPort = 9000;
 
             using (UdpClient udpClient = new UdpClient(listenPort))
-            {
+        {
                 IPEndPoint remoteEndPoint = new IPEndPoint(IPAddress.Any, listenPort);
                 Console.WriteLine($"UDP sunucusu {listenPort} portunda dinliyor...");
 
@@ -23,13 +23,13 @@ namespace MetroVoip.ListenerConsole
 
                 while (true)
                 {
-                    // UDP paketini al
+                        // UDP paketini al
                     byte[] receivedBytes = udpClient.Receive(ref remoteEndPoint);
-                    Console.WriteLine($"Veri alındı: {receivedBytes.Length} byte");
+                        Console.WriteLine($"Veri alındı: {receivedBytes.Length} byte");
 
-                    // Alınan ses verisini hoparlörde oynat
-                    bufferedWaveProvider.AddSamples(receivedBytes, 0, receivedBytes.Length);
-                }
+                        // Alınan ses verisini hoparlörde oynat
+                        bufferedWaveProvider.AddSamples(receivedBytes, 0, receivedBytes.Length);
+                    }
             }
 
         }
