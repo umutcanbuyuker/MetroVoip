@@ -11,8 +11,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MetroVoip.Presentation", "M
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MetroVoip.Common", "MetroVoip.Common\MetroVoip.Common.csproj", "{F10E1E15-DF92-4886-9249-8E41F14C197E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MetroVoip.ListenerConsole", "MetroVoip.ListenerConsole\MetroVoip.ListenerConsole.csproj", "{04C5A625-D285-4B02-B19F-2508D512EFA4}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -35,10 +33,6 @@ Global
 		{F10E1E15-DF92-4886-9249-8E41F14C197E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F10E1E15-DF92-4886-9249-8E41F14C197E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F10E1E15-DF92-4886-9249-8E41F14C197E}.Release|Any CPU.Build.0 = Release|Any CPU
-		{04C5A625-D285-4B02-B19F-2508D512EFA4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{04C5A625-D285-4B02-B19F-2508D512EFA4}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{04C5A625-D285-4B02-B19F-2508D512EFA4}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{04C5A625-D285-4B02-B19F-2508D512EFA4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

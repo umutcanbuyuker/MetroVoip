@@ -7,11 +7,21 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="DTOs\" />
-    <Folder Include="Enums\" />
-    <Folder Include="Extensions\" />
-    <Folder Include="Interfaces\" />
-    <Folder Include="Models\" />
+    <Compile Remove="DTOs\**" />
+    <Compile Remove="Enums\**" />
+    <Compile Remove="Extensions\**" />
+    <Compile Remove="Interfaces\**" />
+    <Compile Remove="Models\**" />
+    <EmbeddedResource Remove="DTOs\**" />
+    <EmbeddedResource Remove="Enums\**" />
+    <EmbeddedResource Remove="Extensions\**" />
+    <EmbeddedResource Remove="Interfaces\**" />
+    <EmbeddedResource Remove="Models\**" />
+    <None Remove="DTOs\**" />
+    <None Remove="Enums\**" />
+    <None Remove="Extensions\**" />
+    <None Remove="Interfaces\**" />
+    <None Remove="Models\**" />
   </ItemGroup>
 
 </Project>
