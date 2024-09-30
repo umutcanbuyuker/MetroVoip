@@ -1,0 +1,131 @@
+﻿<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Konuşmacı Paneli</title>
+    <!-- SignalR ve PeerJS Kütüphaneleri -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/signalr/5.0.11/signalr.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/peerjs@1.3.1/dist/peerjs.min.js"></script>
+</head>
+<body>
+    <h1>Konuşmacı Paneli</h1>
+    <p>Peer ID'niz: <span id="peer-id"></span></p>
+
+    <!-- Gelen ses akışlarını gösterecek container -->
+    <div id="remote-audio-container"></div>
+
+    <script>
+        // PeerJS Başlatılıyor
+        const peer = new Peer();
+
+        // SignalR Bağlantısı
+        const connection = new signalR.HubConnectionBuilder().withUrl("/voiceChatHub").build();
+        let peerId = null;
+        let connections = {}; // Diğer peer'larla olan bağlantıları saklamak için
+
+        // PeerJS Bağlantısı Açıldığında
+        peer.on('open', (id) => {
+            peerId = id;
+            document.getElementById('peer-id').textContent = peerId;
+            console.log("PeerJS bağlantısı açıldı. Peer ID:", peerId);
+
+            // SignalR Bağlantısını Başlat ve Peer ID'yi Kaydet
+            connection.start().then(() => {
+                console.log("SignalR bağlantısı kuruldu.");
+                connection.invoke("RegisterPeer", peerId).catch(err => console.error("SignalR RegisterPeer hatası:", err));
+            }).catch(err => console.error("SignalR bağlantı hatası:", err));
+        });
+
+        // Gelen PeerJS Çağrılarını Yönetme
+        peer.on('call', (call) => {
+            console.log(`Incoming call from ${call.peer}`);
+            // Mikrofon erişimi isteyin
+            navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+                call.answer(stream); // Çağrıya cevap ver
+
+                call.on('stream', (remoteStream) => {
+                    console.log(`Receiving stream from ${call.peer}`);
+                    addRemoteStream(remoteStream, call.peer);
+                });
+
+                call.on('close', () => {
+                    console.log(`Call with ${call.peer} closed.`);
+                    removeRemoteStream(call.peer);
+                });
+
+                call.on('error', (err) => {
+                    console.error(`Call error with ${call.peer}:`, err);
+                });
+            }).catch((err) => {
+                console.error('Mikrofon hatası:', err);
+            });
+        });
+
+        // SignalR'dan "StartVoiceCall" Mesajını Alma
+        connection.on("StartVoiceCall", (selectedPeers) => {
+            if (selectedPeers.includes(peerId)) {
+                console.log("Bağlantı başlatılıyor:", selectedPeers);
+                startCallWithPeers(selectedPeers);
+            }
+        });
+
+        // Seçilen Peer'larla Bağlantı Başlatma Fonksiyonu
+        function startCallWithPeers(peers) {
+            // Mikrofon akışını al
+            navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+                console.log("Local audio stream alındı.");
+                // Seçilen her peer'a bağlan
+                peers.forEach((targetPeerId) => {
+                    if (targetPeerId !== peerId && !(targetPeerId in connections)) {
+                        console.log(`Calling peer: ${targetPeerId}`);
+                        const call = peer.call(targetPeerId, stream);
+                        connections[targetPeerId] = call;
+
+                        call.on('stream', (remoteStream) => {
+                            console.log(`Receiving stream from ${targetPeerId}`);
+                            addRemoteStream(remoteStream, targetPeerId);
+                        });
+
+                        call.on('close', () => {
+                            console.log(`Call with ${targetPeerId} closed.`);
+                            removeRemoteStream(targetPeerId);
+                            delete connections[targetPeerId];
+                        });
+
+                        call.on('error', (err) => {
+                            console.error(`Call error with ${targetPeerId}:`, err);
+                        });
+                    }
+                });
+            }).catch((err) => {
+                console.error('Mikrofon hatası:', err);
+            });
+        }
+
+        // Remote Stream'i Ekleme Fonksiyonu
+        function addRemoteStream(remoteStream, peerId) {
+            let audioElement = document.getElementById(`audio-${peerId}`);
+            if (!audioElement) {
+                audioElement = document.createElement('audio');
+                audioElement.id = `audio-${peerId}`;
+                audioElement.controls = true;
+                audioElement.autoplay = true;
+                audioElement.srcObject = remoteStream;
+                document.getElementById('remote-audio-container').appendChild(audioElement);
+                console.log(`Remote audio element eklendi: ${peerId}`);
+            }
+        }
+
+        // Remote Stream'i Kaldırma Fonksiyonu
+        function removeRemoteStream(peerId) {
+            const audioElement = document.getElementById(`audio-${peerId}`);
+            if (audioElement) {
+                audioElement.srcObject = null;
+                audioElement.remove();
+                console.log(`Remote audio element kaldırıldı: ${peerId}`);
+            }
+        }
+    </script>
+</body>
+</html>

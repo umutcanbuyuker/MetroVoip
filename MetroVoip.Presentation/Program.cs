@@ -47,7 +47,7 @@ namespace MetroVoip.Presentation
                 name: "default",
                 pattern: "{controller=Home}/{action=Index}/{id?}");
 
-            app.MapHub<DriverHub>("/driverHub");
+            app.MapHub<VoiceChatHub>("/voiceChatHub");
             app.UseCors("AllowAll");
             app.Run();
         }
