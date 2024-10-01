@@ -34,7 +34,8 @@ namespace MetroVoip.Presentation.Hubs
             await Clients.Client(AdminConnectionId).SendAsync("UpdatePeerList", availablePeers);
 
             // Admin'e mevcut aktif grupların listesini gönder
-            await Clients.Client(AdminConnectionId).SendAsync("UpdateActiveGroups", ActiveGroups.Keys.ToList());
+            var groupData = ActiveGroups.ToDictionary(group => group.Key, group => group.Value);
+            await Clients.Client(AdminConnectionId).SendAsync("UpdateActiveGroups", groupData);
         }
 
         public async Task StartVoiceCommunication(List<string> selectedPeers)
@@ -57,11 +58,12 @@ namespace MetroVoip.Presentation.Hubs
             ActiveGroups[groupName] = selectedPeers;
             Console.WriteLine($"Yeni grup oluşturuldu: {groupName} - Üyeler: {string.Join(", ", selectedPeers)}");
 
-            // Yöneticiye güncellenmiş aktif grup listesi gönder
+            // Yöneticiye güncellenmiş aktif grup listesi (grup isimleri ve üyeleri) gönder
             if (AdminConnectionId != null)
             {
-                await Clients.Client(AdminConnectionId).SendAsync("UpdateActiveGroups", ActiveGroups.Keys.ToList());
-                Console.WriteLine("Yöneticiye güncellenmiş aktif gruplar gönderildi.");
+                var groupData = ActiveGroups.ToDictionary(group => group.Key, group => group.Value);
+                await Clients.Client(AdminConnectionId).SendAsync("UpdateActiveGroups", groupData);
+                Console.WriteLine("Yöneticiye güncellenmiş aktif gruplar ve üyeler gönderildi.");
             }
 
             // Grup içindeki konuşmacılara sesli iletişim başlatmalarını söylüyoruz
@@ -72,6 +74,7 @@ namespace MetroVoip.Presentation.Hubs
             var availablePeers = GetAvailablePeers();
             await Clients.All.SendAsync("UpdatePeerList", availablePeers);
         }
+
 
         // Sesli iletişimi sonlandırma metodu
         public async Task EndVoiceCommunication(string groupName)
