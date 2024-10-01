@@ -1,7 +1,3 @@
-using MetroVoip.Business.Interfaces;
-using MetroVoip.Business.Services;
-using MetroVoip.Presentation.Hubs;
-
 namespace MetroVoip.Presentation
 {
     public class Program

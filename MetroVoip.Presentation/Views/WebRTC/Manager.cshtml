@@ -12,11 +12,17 @@
 <body>
     <div class="container mt-5">
         <h1 class="mb-4">Yönetici Paneli</h1>
+
+        <!-- Bağlanan Konuşmacılar Bölümü -->
         <h3>Bağlanan Konuşmacılar</h3>
         <form id="peer-form">
-            <div class="list-group" id="peer-list"></div>
+            <div class="list-group" id="available-peer-list"></div>
             <button type="button" class="btn btn-primary mt-3" id="connect-button">Bağla</button>
         </form>
+
+        <!-- Aktif Gruplar Bölümü -->
+        <h3 class="mt-5">Aktif Gruplar</h3>
+        <div class="list-group" id="active-group-list"></div>
     </div>
 
     <!-- Bootstrap JS (İsteğe Bağlı) -->
@@ -30,23 +36,50 @@
             connection.invoke("RegisterAdmin").catch(err => console.error("RegisterAdmin hatası:", err));
         }).catch(err => console.error("SignalR bağlantı hatası:", err));
 
-        // Peer listesi güncellendiğinde listede göster
+        // Bağlanan kullanıcılar listesi güncellendiğinde listede göster
         connection.on("UpdatePeerList", (peers) => {
-            const peerList = document.getElementById('peer-list');
-            peerList.innerHTML = '';  // Listeyi temizle
+            const availablePeerList = document.getElementById('available-peer-list');
+            availablePeerList.innerHTML = '';  // Listeyi temizle
 
             peers.forEach(peerId => {
                 const listItem = document.createElement('div');
                 listItem.className = 'list-group-item d-flex justify-content-between align-items-center';
                 listItem.innerHTML = `
-                        <div>
-                            <input class="form-check-input me-2 peer-checkbox" type="checkbox" value="${peerId}" id="checkbox-${peerId}">
-                            <label class="form-check-label" for="checkbox-${peerId}">
-                                ${peerId}
-                            </label>
-                        </div>
-                    `;
-                peerList.appendChild(listItem);
+                            <div>
+                                <input class="form-check-input me-2 peer-checkbox" type="checkbox" value="${peerId}" id="checkbox-${peerId}">
+                                <label class="form-check-label" for="checkbox-${peerId}">
+                                    ${peerId}
+                                </label>
+                            </div>
+                        `;
+                availablePeerList.appendChild(listItem);
+            });
+        });
+
+        // Aktif gruplar güncellendiğinde listede göster
+        connection.on("UpdateActiveGroups", (groups) => {
+            const activeGroupList = document.getElementById('active-group-list');
+            activeGroupList.innerHTML = '';  // Listeyi temizle
+
+            groups.forEach(groupName => {
+                const listItem = document.createElement('div');
+                listItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+                listItem.innerHTML = `
+                            <span>${groupName}</span>
+                            <button class="btn btn-danger btn-sm end-group-button" data-group="${groupName}">Sonlandır</button>
+                        `;
+                activeGroupList.appendChild(listItem);
+            });
+
+            // "Sonlandır" butonlarına event listener ekle
+            document.querySelectorAll('.end-group-button').forEach(button => {
+                button.addEventListener('click', () => {
+                    const groupName = button.getAttribute('data-group');
+                    if (confirm(`"${groupName}" adlı grubu sonlandırmak istediğinize emin misiniz?`)) {
+                        connection.invoke("EndVoiceCommunication", groupName)
+                            .catch(err => console.error("EndVoiceCommunication hatası:", err));
+                    }
+                });
             });
         });
 
