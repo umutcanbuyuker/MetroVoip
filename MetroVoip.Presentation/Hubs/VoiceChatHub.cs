@@ -107,8 +107,8 @@ namespace MetroVoip.Presentation.Hubs
                 // Yöneticiye güncellenmiş aktif grup listesi gönder
                 if (AdminConnectionId != null)
                 {
-                    await Clients.Client(AdminConnectionId).SendAsync("UpdateActiveGroups", ActiveGroups.Keys.ToList());
-                    Console.WriteLine("Yöneticiye güncellenmiş aktif gruplar gönderildi.");
+                    var groupData = ActiveGroups.ToDictionary(group => group.Key, group => group.Value);
+                    await Clients.Client(AdminConnectionId).SendAsync("UpdateActiveGroups", groupData);
                 }
 
                 // Bağlanan kullanıcılar listesini güncelle
