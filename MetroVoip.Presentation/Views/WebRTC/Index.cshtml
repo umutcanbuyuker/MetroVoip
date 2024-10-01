@@ -1,4 +1,5 @@
-﻿<!DOCTYPE html>
+﻿﻿
+<!DOCTYPE html>
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
@@ -22,7 +23,8 @@
         // SignalR Bağlantısı
         const connection = new signalR.HubConnectionBuilder().withUrl("/voiceChatHub").build();
         let peerId = null;
-        let connections = {}; // Diğer peer'larla olan bağlantıları saklamak için
+        let groupConnections = {}; // Grup bazlı peer'larla olan bağlantıları saklamak için
+        let localStream = null; // Yerel medya akışını saklamak için
 
         // PeerJS Bağlantısı Açıldığında
         peer.on('open', (id) => {
@@ -42,6 +44,11 @@
             console.log(`Incoming call from ${call.peer}`);
             // Mikrofon erişimi isteyin
             navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+                // Yerel medya akışını sakla
+                if (!localStream) {
+                    localStream = stream;
+                }
+
                 call.answer(stream); // Çağrıya cevap ver
 
                 call.on('stream', (remoteStream) => {
@@ -63,43 +70,64 @@
         });
 
         // SignalR'dan "StartVoiceCall" Mesajını Alma
-        connection.on("StartVoiceCall", (selectedPeers) => {
+        connection.on("StartVoiceCall", (selectedPeers, groupName) => {
             if (selectedPeers.includes(peerId)) {
-                console.log("Bağlantı başlatılıyor:", selectedPeers);
-                startCallWithPeers(selectedPeers);
+                console.log("Bağlantı başlatılıyor:", selectedPeers, "Group:", groupName);
+                startCallWithPeers(selectedPeers, groupName);
             }
         });
 
+        // SignalR'dan "EndVoiceCall" Mesajını Alma
+        connection.on("EndVoiceCall", (groupName) => {
+            console.log(`Grup "${groupName}" sonlandırılıyor.`);
+            endVoiceCall(groupName);
+        });
+
         // Seçilen Peer'larla Bağlantı Başlatma Fonksiyonu
-        function startCallWithPeers(peers) {
-            // Mikrofon akışını al
-            navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
-                console.log("Local audio stream alındı.");
-                // Seçilen her peer'a bağlan
-                peers.forEach((targetPeerId) => {
-                    if (targetPeerId !== peerId && !(targetPeerId in connections)) {
-                        console.log(`Calling peer: ${targetPeerId}`);
-                        const call = peer.call(targetPeerId, stream);
-                        connections[targetPeerId] = call;
-
-                        call.on('stream', (remoteStream) => {
-                            console.log(`Receiving stream from ${targetPeerId}`);
-                            addRemoteStream(remoteStream, targetPeerId);
-                        });
-
-                        call.on('close', () => {
-                            console.log(`Call with ${targetPeerId} closed.`);
-                            removeRemoteStream(targetPeerId);
-                            delete connections[targetPeerId];
-                        });
-
-                        call.on('error', (err) => {
-                            console.error(`Call error with ${targetPeerId}:`, err);
-                        });
-                    }
+        function startCallWithPeers(peers, groupName) {
+            // Mikrofon akışını al veya mevcut akışı kullan
+            if (!localStream) {
+                navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+                    localStream = stream;
+                    initiateCalls(peers, groupName);
+                }).catch((err) => {
+                    console.error('Mikrofon hatası:', err);
                 });
-            }).catch((err) => {
-                console.error('Mikrofon hatası:', err);
+            } else {
+                initiateCalls(peers, groupName);
+            }
+        }
+
+        // Çağrıları Başlatma Fonksiyonu
+        function initiateCalls(peers, groupName) {
+            console.log("Local audio stream kullanılarak çağrılar başlatılıyor.");
+            // Grup için bağlantı saklamak üzere groupConnections sözlüğüne grup ekle
+            if (!groupConnections[groupName]) {
+                groupConnections[groupName] = {};
+            }
+
+            // Seçilen her peer'a bağlan
+            peers.forEach((targetPeerId) => {
+                if (targetPeerId !== peerId && !(targetPeerId in groupConnections[groupName])) {
+                    console.log(`Calling peer: ${targetPeerId}`);
+                    const call = peer.call(targetPeerId, localStream);
+                    groupConnections[groupName][targetPeerId] = call;
+
+                    call.on('stream', (remoteStream) => {
+                        console.log(`Receiving stream from ${targetPeerId}`);
+                        addRemoteStream(remoteStream, targetPeerId);
+                    });
+
+                    call.on('close', () => {
+                        console.log(`Call with ${targetPeerId} closed.`);
+                        removeRemoteStream(targetPeerId);
+                        delete groupConnections[groupName][targetPeerId];
+                    });
+
+                    call.on('error', (err) => {
+                        console.error(`Call error with ${targetPeerId}:`, err);
+                    });
+                }
             });
         }
 
@@ -126,6 +154,37 @@
                 console.log(`Remote audio element kaldırıldı: ${peerId}`);
             }
         }
+
+        // Sesli iletişimi sonlandırma fonksiyonu
+        function endVoiceCall(groupName) {
+            console.log(`Grup "${groupName}" için bağlantılar sonlandırılıyor.`);
+            if (groupConnections[groupName]) {
+                // Grup içindeki tüm bağlantıları kapat
+                for (const [targetPeerId, call] of Object.entries(groupConnections[groupName])) {
+                    call.close();
+                    removeRemoteStream(targetPeerId);
+                    delete groupConnections[groupName][targetPeerId];
+                    console.log(`Bağlantı kapatıldı: ${targetPeerId}`);
+                }
+                // Grup bağlantılarını temizle
+                delete groupConnections[groupName];
+                console.log(`Grup "${groupName}" sonlandırıldı.`);
+            }
+
+            // Yerel medya akışını durdur
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+                console.log("Yerel medya akışı durduruldu ve mikrofon kapatıldı.");
+            }
+        }
+
+        // Sayfa kapatıldığında veya yeniden yüklendiğinde yerel medya akışını durdur
+        window.addEventListener('beforeunload', () => {
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+            }
+        });
     </script>
 </body>
 </html>
