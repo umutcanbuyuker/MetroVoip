@@ -76,6 +76,31 @@
             }
         });
 
+        // SignalR'dan "AddPeersToGroup" Mesajını Alma
+        connection.on("AddPeersToGroup", (newPeers, groupName) => {
+            if (newPeers.includes(peerId)) {
+                console.log("Gruba yeni peer'lar ekleniyor:", newPeers, "Group:", groupName);
+                // Bu durumda, yeni eklenen konuşmacı kendi çağrılarını başlatmalıdır
+                // Ancak mevcut kodda bu liste sadece yeni peer'ları içeriyor
+                // Yeni peer'ın çağrı başlatabilmesi için mevcut grup üyelerinin listesini alması gerekir
+                // Bu nedenle, 'ExistingGroupMembers' mesajını kullanacağız
+            }
+        });
+
+        // SignalR'dan "ExistingGroupMembers" Mesajını Alma
+        connection.on("ExistingGroupMembers", (existingMembers, groupName) => {
+            if (existingMembers.length > 0) {
+                console.log("Existing group members to call:", existingMembers, "Group:", groupName);
+                startCallWithPeers(existingMembers, groupName);
+            }
+        });
+
+        // Yeni Eklenen: "PeerLeftGroup" Mesajını Alma
+        connection.on("PeerLeftGroup", (leftPeerId, groupName) => {
+            console.log(`Peer "${leftPeerId}" gruptan ayrıldı: ${groupName}`);
+            removeRemoteStream(leftPeerId);
+        });
+
         // SignalR'dan "EndVoiceCall" Mesajını Alma
         connection.on("EndVoiceCall", (groupName) => {
             console.log(`Grup "${groupName}" sonlandırılıyor.`);

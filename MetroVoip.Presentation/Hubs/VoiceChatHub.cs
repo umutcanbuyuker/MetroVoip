@@ -1,8 +1,4 @@
 ﻿using Microsoft.AspNetCore.SignalR;
-using System.Threading.Tasks;
-using System.Collections.Generic;
-using System.Linq;
-using System;
 
 public class VoiceChatHub : Hub
 {
@@ -36,7 +32,8 @@ public class VoiceChatHub : Hub
         await Clients.Client(AdminConnectionId).SendAsync("UpdatePeerList", availablePeers);
 
         // Admin'e mevcut aktif grupların listesini gönder
-        await Clients.Client(AdminConnectionId).SendAsync("UpdateActiveGroups", ActiveGroups.Keys.ToList());
+        var groupData = ActiveGroups.ToDictionary(group => group.Key, group => group.Value);
+        await Clients.Client(AdminConnectionId).SendAsync("UpdateActiveGroups", groupData);
     }
 
     public async Task StartVoiceCommunication(List<string> selectedPeers)
@@ -59,11 +56,12 @@ public class VoiceChatHub : Hub
         ActiveGroups[groupName] = selectedPeers;
         Console.WriteLine($"Yeni grup oluşturuldu: {groupName} - Üyeler: {string.Join(", ", selectedPeers)}");
 
-        // Yöneticiye güncellenmiş aktif grup listesi gönder
+        // Yöneticiye güncellenmiş aktif grup listesi (grup isimleri ve üyeleri) gönder
         if (AdminConnectionId != null)
         {
-            await Clients.Client(AdminConnectionId).SendAsync("UpdateActiveGroups", ActiveGroups.Keys.ToList());
-            Console.WriteLine("Yöneticiye güncellenmiş aktif gruplar gönderildi.");
+            var groupData = ActiveGroups.ToDictionary(group => group.Key, group => group.Value);
+            await Clients.Client(AdminConnectionId).SendAsync("UpdateActiveGroups", groupData);
+            Console.WriteLine("Yöneticiye güncellenmiş aktif gruplar ve üyeler gönderildi.");
         }
 
         // Grup içindeki konuşmacılara sesli iletişim başlatmalarını söylüyoruz
@@ -75,7 +73,63 @@ public class VoiceChatHub : Hub
         await Clients.All.SendAsync("UpdatePeerList", availablePeers);
     }
 
-    // Sesli iletişimi sonlandırma metodu
+    // Yeni Eklenen Metot: Aktif gruba yeni konuşmacılar ekleme
+    public async Task AddPeersToGroup(string groupName, List<string> newPeers)
+    {
+        if (ActiveGroups.ContainsKey(groupName))
+        {
+            // Mevcut grup üyelerinin bir kopyasını al (eklenenler hariç)
+            var existingMembers = ActiveGroups[groupName].ToList();
+
+            foreach (var peerId in newPeers)
+            {
+                if (!ActiveGroups[groupName].Contains(peerId))
+                {
+                    ActiveGroups[groupName].Add(peerId);
+                    var connectionId = ConnectedPeers.FirstOrDefault(x => x.Value == peerId).Key;
+                    if (!string.IsNullOrEmpty(connectionId))
+                    {
+                        await Groups.AddToGroupAsync(connectionId, groupName);
+                        Console.WriteLine($"Peer {peerId} gruba eklendi: {groupName}");
+                    }
+                }
+            }
+
+            // Yöneticiye güncellenmiş aktif gruplar ve üyeler listesini gönder
+            if (AdminConnectionId != null)
+            {
+                var groupData = ActiveGroups.ToDictionary(group => group.Key, group => group.Value);
+                await Clients.Client(AdminConnectionId).SendAsync("UpdateActiveGroups", groupData);
+                Console.WriteLine("Yöneticiye güncellenmiş aktif gruplar ve üyeler gönderildi.");
+            }
+
+            // Gruba dahil olan tüm konuşmacılara yeni eklenen peer'larla sesli iletişim başlatmalarını bildir
+            await Clients.Group(groupName).SendAsync("AddPeersToGroup", newPeers, groupName);
+            Console.WriteLine($"AddPeersToGroup mesajı gönderildi: {groupName}");
+
+            // Yeni eklenen konuşmacılara mevcut grup üyelerini gönder
+            foreach (var newPeer in newPeers)
+            {
+                var connectionId = ConnectedPeers.FirstOrDefault(x => x.Value == newPeer).Key;
+                if (!string.IsNullOrEmpty(connectionId))
+                {
+                    // Yeni eklenen konuşmacının bağlandığı grup içindeki mevcut üyeler
+                    var existingMembersForPeer = ActiveGroups[groupName].Except(newPeers).ToList();
+                    await Clients.Client(connectionId).SendAsync("ExistingGroupMembers", ActiveGroups[groupName].ToList(), groupName);
+                    Console.WriteLine($"ExistingGroupMembers mesajı gönderildi: {groupName} - Peer: {newPeer}");
+                }
+            }
+
+            // Bağlanan kullanıcılar listesini güncelle
+            var availablePeers = GetAvailablePeers();
+            await Clients.All.SendAsync("UpdatePeerList", availablePeers);
+        }
+        else
+        {
+            Console.WriteLine($"AddPeersToGroup: Grup bulunamadı: {groupName}");
+        }
+    }
+
     public async Task EndVoiceCommunication(string groupName)
     {
         Console.WriteLine($"EndVoiceCommunication çağrıldı: {groupName}");
@@ -106,8 +160,8 @@ public class VoiceChatHub : Hub
             // Yöneticiye güncellenmiş aktif grup listesi gönder
             if (AdminConnectionId != null)
             {
-                await Clients.Client(AdminConnectionId).SendAsync("UpdateActiveGroups", ActiveGroups.Keys.ToList());
-                Console.WriteLine("Yöneticiye güncellenmiş aktif gruplar gönderildi.");
+                var groupData = ActiveGroups.ToDictionary(group => group.Key, group => group.Value);
+                await Clients.Client(AdminConnectionId).SendAsync("UpdateActiveGroups", groupData);
             }
 
             // Bağlanan kullanıcılar listesini güncelle
@@ -136,6 +190,10 @@ public class VoiceChatHub : Hub
                 await Groups.RemoveFromGroupAsync(Context.ConnectionId, group);
                 Console.WriteLine($"Peer {disconnectedPeerId} gruptan çıkarıldı: {group}");
 
+                // Gruba dahil olan diğer konuşmacılara bu peer'ın ayrıldığını bildir
+                await Clients.Group(group).SendAsync("PeerLeftGroup", disconnectedPeerId, group);
+                Console.WriteLine($"PeerLeftGroup mesajı gönderildi: {disconnectedPeerId} - Grup: {group}");
+
                 // Grup boş kaldıysa grubu sonlandır
                 if (ActiveGroups[group].Count < 2)
                 {
@@ -146,7 +204,8 @@ public class VoiceChatHub : Hub
                     // Grup hala aktif ise, grubu güncelle
                     if (AdminConnectionId != null)
                     {
-                        await Clients.Client(AdminConnectionId).SendAsync("UpdateActiveGroups", ActiveGroups.Keys.ToList());
+                        var groupData = ActiveGroups.ToDictionary(group => group.Key, group => group.Value);
+                        await Clients.Client(AdminConnectionId).SendAsync("UpdateActiveGroups", groupData);
                         Console.WriteLine("Yöneticiye güncellenmiş aktif gruplar gönderildi.");
                     }
                 }
@@ -160,8 +219,8 @@ public class VoiceChatHub : Hub
             }
 
             // Tüm kullanıcılara güncellenmiş Peer listesini gönder (grupta olmayanlar)
-            var availablePeers = GetAvailablePeers();
-            await Clients.All.SendAsync("UpdatePeerList", availablePeers);
+            var availablePeersFinal = GetAvailablePeers();
+            await Clients.All.SendAsync("UpdatePeerList", availablePeersFinal);
             Console.WriteLine("Tüm kullanıcılara güncellenmiş Peer listesi gönderildi.");
         }
 

@@ -23,6 +23,19 @@
         <!-- Aktif Gruplar Bölümü -->
         <h3 class="mt-5">Aktif Gruplar</h3>
         <div class="list-group" id="active-group-list"></div>
+
+        <!-- Yeni Eklenen Bölüm: Aktif Gruplara Yeni Konuşmacılar Ekleme -->
+        <h3 class="mt-5">Gruplara Yeni Konuşmacılar Ekle</h3>
+        <form id="add-peer-form">
+            <div class="mb-3">
+                <label for="select-group" class="form-label">Grup Seçin</label>
+                <select class="form-select" id="select-group">
+                    <option value="" disabled selected>Grup seçin</option>
+                </select>
+            </div>
+            <div class="list-group mb-3" id="available-peer-add-list"></div>
+            <button type="button" class="btn btn-success" id="add-peers-button">Konuşmacıları Ekle</button>
+        </form>
     </div>
 
     <!-- Bootstrap JS (İsteğe Bağlı) -->
@@ -45,14 +58,32 @@
                 const listItem = document.createElement('div');
                 listItem.className = 'list-group-item d-flex justify-content-between align-items-center';
                 listItem.innerHTML = `
-                            <div>
-                                <input class="form-check-input me-2 peer-checkbox" type="checkbox" value="${peerId}" id="checkbox-${peerId}">
-                                <label class="form-check-label" for="checkbox-${peerId}">
-                                    ${peerId}
-                                </label>
-                            </div>
-                        `;
+                                        <div>
+                                            <input class="form-check-input me-2 peer-checkbox" type="checkbox" value="${peerId}" id="checkbox-${peerId}">
+                                            <label class="form-check-label" for="checkbox-${peerId}">
+                                                ${peerId}
+                                            </label>
+                                        </div>
+                                    `;
                 availablePeerList.appendChild(listItem);
+            });
+
+            // Aynı peer'ları ekleme formunda da güncelle
+            const availablePeerAddList = document.getElementById('available-peer-add-list');
+            availablePeerAddList.innerHTML = '';  // Listeyi temizle
+
+            peers.forEach(peerId => {
+                const listItem = document.createElement('div');
+                listItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+                listItem.innerHTML = `
+                                        <div>
+                                            <input class="form-check-input me-2 peer-checkbox-add" type="checkbox" value="${peerId}" id="add-checkbox-${peerId}">
+                                            <label class="form-check-label" for="add-checkbox-${peerId}">
+                                                ${peerId}
+                                            </label>
+                                        </div>
+                                    `;
+                availablePeerAddList.appendChild(listItem);
             });
         });
 
@@ -61,14 +92,28 @@
             const activeGroupList = document.getElementById('active-group-list');
             activeGroupList.innerHTML = '';  // Listeyi temizle
 
-            groups.forEach(groupName => {
+            const selectGroup = document.getElementById('select-group');
+            selectGroup.innerHTML = '<option value="" disabled selected>Grup seçin</option>'; // Temizle
+
+            // Gelen grup verisi hem grup ismi hem de kullanıcı listesi içerecek
+            Object.keys(groups).forEach(groupName => {
                 const listItem = document.createElement('div');
                 listItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+
+                // Gruba ait kullanıcıları virgülle ayırarak yazdır
+                const groupMembers = groups[groupName].join(", ");
+
                 listItem.innerHTML = `
-                            <span>${groupName}</span>
-                            <button class="btn btn-danger btn-sm end-group-button" data-group="${groupName}">Sonlandır</button>
-                        `;
+                    <span><strong>Grup:</strong> ${groupName} <br> <strong>Üyeler:</strong> ${groupMembers}</span>
+                    <button class="btn btn-danger btn-sm end-group-button" data-group="${groupName}">Sonlandır</button>
+                    `;
                 activeGroupList.appendChild(listItem);
+
+                // Select input için seçenek ekle
+                const option = document.createElement('option');
+                option.value = groupName;
+                option.textContent = `${groupName} (Üyeler: ${groupMembers})`;
+                selectGroup.appendChild(option);
             });
 
             // "Sonlandır" butonlarına event listener ekle
@@ -95,6 +140,27 @@
             } else {
                 alert("Lütfen en az iki konuşmacı seçin.");
             }
+        });
+
+        // Yeni Eklenen: "Konuşmacıları Ekle" butonuna tıklandığında
+        document.getElementById('add-peers-button').addEventListener('click', () => {
+            const selectedGroup = document.getElementById('select-group').value;
+            if (!selectedGroup) {
+                alert("Lütfen bir grup seçin.");
+                return;
+            }
+
+            const selectedPeers = Array.from(document.querySelectorAll('.peer-checkbox-add:checked'))
+                .map(input => input.value);
+
+            if (selectedPeers.length < 1) {
+                alert("Lütfen en az bir konuşmacı seçin.");
+                return;
+            }
+
+            console.log(`Grup "${selectedGroup}" için seçilen yeni Peer'lar:`, selectedPeers);
+            connection.invoke("AddPeersToGroup", selectedGroup, selectedPeers)
+                .catch(err => console.error("AddPeersToGroup hatası:", err));
         });
     </script>
 </body>
