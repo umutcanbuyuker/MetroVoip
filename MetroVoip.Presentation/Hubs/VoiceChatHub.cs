@@ -75,6 +75,62 @@ namespace MetroVoip.Presentation.Hubs
             await Clients.All.SendAsync("UpdatePeerList", availablePeers);
         }
 
+        // Yeni Eklenen Metot: Aktif gruba yeni konuşmacılar ekleme
+        public async Task AddPeersToGroup(string groupName, List<string> newPeers)
+        {
+            if (ActiveGroups.ContainsKey(groupName))
+            {
+                // Mevcut grup üyelerinin bir kopyasını al (eklenenler hariç)
+                var existingMembers = ActiveGroups[groupName].ToList();
+
+                foreach (var peerId in newPeers)
+                {
+                    if (!ActiveGroups[groupName].Contains(peerId))
+                    {
+                        ActiveGroups[groupName].Add(peerId);
+                        var connectionId = ConnectedPeers.FirstOrDefault(x => x.Value == peerId).Key;
+                        if (!string.IsNullOrEmpty(connectionId))
+                        {
+                            await Groups.AddToGroupAsync(connectionId, groupName);
+                            Console.WriteLine($"Peer {peerId} gruba eklendi: {groupName}");
+                        }
+                    }
+                }
+
+                // Yöneticiye güncellenmiş aktif gruplar ve üyeler listesini gönder
+                if (AdminConnectionId != null)
+                {
+                    var groupData = ActiveGroups.ToDictionary(group => group.Key, group => group.Value);
+                    await Clients.Client(AdminConnectionId).SendAsync("UpdateActiveGroups", groupData);
+                    Console.WriteLine("Yöneticiye güncellenmiş aktif gruplar ve üyeler gönderildi.");
+                }
+
+                // Gruba dahil olan tüm konuşmacılara yeni eklenen peer'larla sesli iletişim başlatmalarını bildir
+                await Clients.Group(groupName).SendAsync("AddPeersToGroup", newPeers, groupName);
+                Console.WriteLine($"AddPeersToGroup mesajı gönderildi: {groupName}");
+
+                // Yeni eklenen konuşmacılara mevcut grup üyelerini gönder
+                foreach (var newPeer in newPeers)
+                {
+                    var connectionId = ConnectedPeers.FirstOrDefault(x => x.Value == newPeer).Key;
+                    if (!string.IsNullOrEmpty(connectionId))
+                    {
+                        // Yeni eklenen konuşmacının bağlandığı grup içindeki mevcut üyeler
+                        var existingMembersForPeer = ActiveGroups[groupName].Except(newPeers).ToList();
+                        await Clients.Client(connectionId).SendAsync("ExistingGroupMembers", ActiveGroups[groupName].ToList(), groupName);
+                        Console.WriteLine($"ExistingGroupMembers mesajı gönderildi: {groupName} - Peer: {newPeer}");
+                    }
+                }
+
+                // Bağlanan kullanıcılar listesini güncelle
+                var availablePeers = GetAvailablePeers();
+                await Clients.All.SendAsync("UpdatePeerList", availablePeers);
+            }
+            else
+            {
+                Console.WriteLine($"AddPeersToGroup: Grup bulunamadı: {groupName}");
+            }
+        }
 
         // Sesli iletişimi sonlandırma metodu
         public async Task EndVoiceCommunication(string groupName)
@@ -137,6 +193,10 @@ namespace MetroVoip.Presentation.Hubs
                     await Groups.RemoveFromGroupAsync(Context.ConnectionId, group);
                     Console.WriteLine($"Peer {disconnectedPeerId} gruptan çıkarıldı: {group}");
 
+                    // Gruba dahil olan diğer konuşmacılara bu peer'ın ayrıldığını bildir
+                    await Clients.Group(group).SendAsync("PeerLeftGroup", disconnectedPeerId, group);
+                    Console.WriteLine($"PeerLeftGroup mesajı gönderildi: {disconnectedPeerId} - Grup: {group}");
+
                     // Grup boş kaldıysa grubu sonlandır
                     if (ActiveGroups[group].Count < 2)
                     {
@@ -147,7 +207,8 @@ namespace MetroVoip.Presentation.Hubs
                         // Grup hala aktif ise, grubu güncelle
                         if (AdminConnectionId != null)
                         {
-                            await Clients.Client(AdminConnectionId).SendAsync("UpdateActiveGroups", ActiveGroups.Keys.ToList());
+                            var groupData = ActiveGroups.ToDictionary(group => group.Key, group => group.Value);
+                            await Clients.Client(AdminConnectionId).SendAsync("UpdateActiveGroups", groupData);
                             Console.WriteLine("Yöneticiye güncellenmiş aktif gruplar gönderildi.");
                         }
                     }
@@ -161,8 +222,8 @@ namespace MetroVoip.Presentation.Hubs
                 }
 
                 // Tüm kullanıcılara güncellenmiş Peer listesini gönder (grupta olmayanlar)
-                var availablePeers = GetAvailablePeers();
-                await Clients.All.SendAsync("UpdatePeerList", availablePeers);
+                var availablePeersFinal = GetAvailablePeers();
+                await Clients.All.SendAsync("UpdatePeerList", availablePeersFinal);
                 Console.WriteLine("Tüm kullanıcılara güncellenmiş Peer listesi gönderildi.");
             }
 

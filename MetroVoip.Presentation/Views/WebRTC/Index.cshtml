@@ -6,15 +6,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Konuşmacı Paneli</title>
     <!-- SignalR ve PeerJS Kütüphaneleri -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/signalr/5.0.11/signalr.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/peerjs@1.3.1/dist/peerjs.min.js"></script>
 </head>
 <body>
-    <h1>Konuşmacı Paneli</h1>
-    <p>Peer ID'niz: <span id="peer-id"></span></p>
+    <div class="container mt-5">
+        <h1 class="mb-4 text-center text-primary">Konuşmacı Paneli</h1>
 
-    <!-- Gelen ses akışlarını gösterecek container -->
-    <div id="remote-audio-container"></div>
+        <!-- Peer ID Bölümü -->
+        <div class="alert alert-info d-flex justify-content-between align-items-center">
+            <span><strong>Peer ID'niz:</strong></span>
+            <span id="peer-id" class="badge bg-primary"></span>
+        </div>
+
+        <!-- Gelen Ses Akışları -->
+        <div class="card mt-4">
+            <div class="card-header text-white bg-dark">
+                <i class="bi bi-headphones"></i> Gelen Ses Akışları
+            </div>
+            <div class="card-body" id="remote-audio-container">
+                <!-- Ses akışları burada görünecek -->
+                <p class="text-muted">Şu anda gelen ses akışı yok.</p>
+            </div>
+        </div>
+    </div>
 
     <script>
         // PeerJS Başlatılıyor
@@ -41,9 +55,18 @@
 
         // Gelen PeerJS Çağrılarını Yönetme
         peer.on('call', (call) => {
-            console.log(`Incoming call from ${call.peer}`);
+            // Gelen çağrıyı bildir
+            toastr.success(`Incoming call from ${call.peer}`, 'Gelen Çağrı', {
+                timeOut: 5000,           // Bildirimin ekranda kalma süresi (5 saniye)
+                closeButton: true,       // Kapatma butonu ekler
+                progressBar: true,       // İlerleme çubuğu ekler
+                positionClass: 'toast-top-right'  // Sağ üst köşede çıkar
+            });
+
             // Mikrofon erişimi isteyin
             navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+                $('p.text-muted').hide();
+
                 // Yerel medya akışını sakla
                 if (!localStream) {
                     localStream = stream;
@@ -81,6 +104,31 @@
         connection.on("EndVoiceCall", (groupName) => {
             console.log(`Grup "${groupName}" sonlandırılıyor.`);
             endVoiceCall(groupName);
+        });
+
+        // Yeni Eklenen: "PeerLeftGroup" Mesajını Alma
+        connection.on("PeerLeftGroup", (leftPeerId, groupName) => {
+            console.log(`Peer "${leftPeerId}" gruptan ayrıldı: ${groupName}`);
+            removeRemoteStream(leftPeerId);
+        });
+
+        // SignalR'dan "AddPeersToGroup" Mesajını Alma
+        connection.on("AddPeersToGroup", (newPeers, groupName) => {
+            if (newPeers.includes(peerId)) {
+                console.log("Gruba yeni peer'lar ekleniyor:", newPeers, "Group:", groupName);
+                // Bu durumda, yeni eklenen konuşmacı kendi çağrılarını başlatmalıdır
+                // Ancak mevcut kodda bu liste sadece yeni peer'ları içeriyor
+                // Yeni peer'ın çağrı başlatabilmesi için mevcut grup üyelerinin listesini alması gerekir
+                // Bu nedenle, 'ExistingGroupMembers' mesajını kullanacağız
+            }
+        });
+
+        // SignalR'dan "ExistingGroupMembers" Mesajını Alma
+        connection.on("ExistingGroupMembers", (existingMembers, groupName) => {
+            if (existingMembers.length > 0) {
+                console.log("Existing group members to call:", existingMembers, "Group:", groupName);
+                startCallWithPeers(existingMembers, groupName);
+            }
         });
 
         // Seçilen Peer'larla Bağlantı Başlatma Fonksiyonu
@@ -133,15 +181,29 @@
 
         // Remote Stream'i Ekleme Fonksiyonu
         function addRemoteStream(remoteStream, peerId) {
-            let audioElement = document.getElementById(`audio-${peerId}`);
+            let audioElement = document.getElementById(`audio-container-${peerId}`);
+
             if (!audioElement) {
-                audioElement = document.createElement('audio');
-                audioElement.id = `audio-${peerId}`;
-                audioElement.controls = true;
-                audioElement.autoplay = true;
-                audioElement.srcObject = remoteStream;
+                // Kart yapısı oluştur
+                audioElement = document.createElement('div');
+                audioElement.id = `audio-container-${peerId}`;
+                audioElement.className = 'card mb-3 shadow-sm';
+
+                // Kartın içeriği
+                audioElement.innerHTML = `
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="card-title">Arayan: ${peerId}</h5>
+                    <audio id="audio-${peerId}" controls autoplay class="w-100"></audio>
+                </div>
+            </div>
+        `;
+
                 document.getElementById('remote-audio-container').appendChild(audioElement);
-                console.log(`Remote audio element eklendi: ${peerId}`);
+
+                // Audio elementine stream kaynağını ekle
+                const audioTag = document.getElementById(`audio-${peerId}`);
+                audioTag.srcObject = remoteStream;
             }
         }
 
@@ -175,7 +237,16 @@
             if (localStream) {
                 localStream.getTracks().forEach(track => track.stop());
                 localStream = null;
-                console.log("Yerel medya akışı durduruldu ve mikrofon kapatıldı.");
+
+                // Toastr ile kenardan çıkan bildirim
+                toastr.info('', 'Görüşme sonlandırıldı.', {
+                    timeOut: 3000, // Bildirimin ne kadar sürede kaybolacağını belirler
+                    closeButton: true, // Kapatma butonu
+                    progressBar: true, // Bildirimin kaybolmasını gösteren bir ilerleme çubuğu
+                    positionClass: 'toast-top-right', // Bildirimin çıkacağı konum
+                });
+
+                $('p.text-muted').show();
             }
         }
 
@@ -185,6 +256,8 @@
                 localStream.getTracks().forEach(track => track.stop());
             }
         });
+
+       
     </script>
 </body>
 </html>

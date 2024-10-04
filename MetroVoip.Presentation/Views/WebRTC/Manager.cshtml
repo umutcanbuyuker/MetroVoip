@@ -5,25 +5,68 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Yönetici Paneli</title>
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- SignalR Kütüphanesi -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/signalr/5.0.11/signalr.min.js"></script>
 </head>
 <body>
     <div class="container mt-5">
-        <h1 class="mb-4">Yönetici Paneli</h1>
+        <h1 class="mb-4 text-center">Yönetici Paneli</h1>
 
         <!-- Bağlanan Konuşmacılar Bölümü -->
-        <h3>Bağlanan Konuşmacılar</h3>
-        <form id="peer-form">
-            <div class="list-group" id="available-peer-list"></div>
-            <button type="button" class="btn btn-primary mt-3" id="connect-button">Bağla</button>
-        </form>
+        <div class="card mt-4 shadow-sm">
+            <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                <h4 class="mb-0"><i class="bi bi-people-fill"></i> Bağlanan Konuşmacılar</h4>
+                <span class="badge bg-light text-secondary" id="peer-count">0 Konuşmacı</span>
+            </div>
+            <div class="card-body">
+                <form id="peer-form">
+                    <!-- Konuşmacı Listesi -->
+                    <div class="list-group" id="available-peer-list">
+                        <p class="text-muted text-center">Bağlanan konuşmacı yok.</p>
+                    </div>
 
-        <!-- Aktif Gruplar Bölümü -->
-        <h3 class="mt-5">Aktif Gruplar</h3>
-        <div class="list-group" id="active-group-list"></div>
+                    <!-- Bağla Butonu -->
+                    <button type="button" class="btn btn-success mt-3 w-100" id="connect-button">
+                        <i class="bi bi-person-plus"></i> Arama
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mt-4 shadow-sm">
+            <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                <h4 class="mb-0"><i class="bi bi-people-fill"></i> Aktif Gruplar</h4>
+                <span class="badge bg-light text-secondary" id="group-count">0 Grup</span>
+            </div>
+            <div class="card-body">
+                <div class="list-group" id="active-group-list">
+                    <p class="text-muted text-center">Aktif grup yok.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gruplara yeni konuşmacı ekleme bölümü -->
+        <div class="card mt-4 shadow-sm">
+            <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                <h4 class="mb-0"><i class="bi bi-person-plus-fill"></i> Gruplara Konuşmacı Ekle</h4>
+            </div>
+            <div class="card-body">
+                <form id="add-peer-form">
+                    <!-- Grup Seçimi -->
+                    <div class="mb-3">
+                        <label for="select-group" class="form-label fw-bold">Grup Seçin</label>
+                        <select class="form-select" id="select-group">
+                            <option value="" disabled selected>Grup seçin</option>
+                            <!-- Grup seçenekleri dinamik olarak buraya eklenecek -->
+                        </select>
+                    </div>
+
+                    <!-- Konuşmacı Ekle Butonu -->
+                    <button type="button" class="btn btn-success w-100" id="add-peers-button">
+                        <i class="bi bi-person-plus"></i> Seçili Konuşmacıları Ekle
+                    </button>
+                </form>
+            </div>
+        </div>
+
     </div>
 
     <!-- Bootstrap JS (İsteğe Bağlı) -->
@@ -46,14 +89,32 @@
                 const listItem = document.createElement('div');
                 listItem.className = 'list-group-item d-flex justify-content-between align-items-center';
                 listItem.innerHTML = `
-                                <div>
-                                    <input class="form-check-input me-2 peer-checkbox" type="checkbox" value="${peerId}" id="checkbox-${peerId}">
-                                    <label class="form-check-label" for="checkbox-${peerId}">
-                                        ${peerId}
-                                    </label>
-                                </div>
-                            `;
+                                        <div>
+                                            <input class="form-check-input me-2 peer-checkbox" type="checkbox" value="${peerId}" id="checkbox-${peerId}">
+                                            <label class="form-check-label" for="checkbox-${peerId}">
+                                                ${peerId}
+                                            </label>
+                                        </div>
+                                    `;
                 availablePeerList.appendChild(listItem);
+            });
+
+            // Aynı peer'ları ekleme formunda da güncelle
+            const availablePeerAddList = document.getElementById('available-peer-add-list');
+            availablePeerAddList.innerHTML = '';  // Listeyi temizle
+
+            peers.forEach(peerId => {
+                const listItem = document.createElement('div');
+                listItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+                listItem.innerHTML = `
+                                        <div>
+                                            <input class="form-check-input me-2 peer-checkbox-add" type="checkbox" value="${peerId}" id="add-checkbox-${peerId}">
+                                            <label class="form-check-label" for="add-checkbox-${peerId}">
+                                                ${peerId}
+                                            </label>
+                                        </div>
+                                    `;
+                availablePeerAddList.appendChild(listItem);
             });
         });
 
@@ -62,20 +123,38 @@
             const activeGroupList = document.getElementById('active-group-list');
             activeGroupList.innerHTML = '';  // Listeyi temizle
 
+            const selectGroup = document.getElementById('select-group');
+            selectGroup.innerHTML = '<option value="" disabled selected>Grup seçin</option>'; // Temizle
+
             // Gelen grup verisi hem grup ismi hem de kullanıcı listesi içerecek
             Object.keys(groups).forEach(groupName => {
                 const listItem = document.createElement('div');
                 listItem.className = 'list-group-item d-flex justify-content-between align-items-center';
 
-                // Gruba ait kullanıcıları virgülle ayırarak yazdır
-                const groupMembers = groups[groupName].join(", ");
+                // Her üyeyi bir badge içine al
+                const groupMembers = groups[groupName]
+                    .map(member => `<span class="badge bg-primary">${member}</span>`)
+                    .join(' ');
 
                 listItem.innerHTML = `
-            <span><strong>Grup:</strong> ${groupName} <br> <strong>Üyeler:</strong> ${groupMembers}</span>
-            <button class="btn btn-danger btn-sm end-group-button" data-group="${groupName}">Sonlandır</button>
-        `;
+    <div class="list-group-item d-flex justify-content-between align-items-center">
+        <div>
+            <span class="fw-bold">Grup:</span> ${groupName} <br>
+            <span class="fw-bold">Üyeler:</span> ${groupMembers}
+        </div>
+        <button class="btn btn-danger btn-sm end-group-button ms-3" data-group="${groupName}">
+            <i class="bi bi-x-circle"></i> Sonlandır
+        </button>
+    </div>
+`;
                 activeGroupList.appendChild(listItem);
+                // Select input için seçenek ekle
+                const option = document.createElement('option');
+                option.value = groupName;
+                option.textContent = `${groupName} (Üyeler: ${groupMembers})`;
+                selectGroup.appendChild(option);
             });
+
 
             // "Sonlandır" butonlarına event listener ekle
             document.querySelectorAll('.end-group-button').forEach(button => {
@@ -102,6 +181,27 @@
             } else {
                 alert("Lütfen en az iki konuşmacı seçin.");
             }
+        });
+
+        // Yeni Eklenen: "Konuşmacıları Ekle" butonuna tıklandığında
+        document.getElementById('add-peers-button').addEventListener('click', () => {
+            const selectedGroup = document.getElementById('select-group').value;
+            if (!selectedGroup) {
+                alert("Lütfen bir grup seçin.");
+                return;
+            }
+
+            const selectedPeers = Array.from(document.querySelectorAll('.peer-checkbox:checked'))
+                .map(input => input.value);
+
+            if (selectedPeers.length < 1) {
+                alert("Lütfen en az bir konuşmacı seçin.");
+                return;
+            }
+
+            console.log(`Grup "${selectedGroup}" için seçilen yeni Peer'lar:`, selectedPeers);
+            connection.invoke("AddPeersToGroup", selectedGroup, selectedPeers)
+                .catch(err => console.error("AddPeersToGroup hatası:", err));
         });
     </script>
 </body>
