@@ -1,0 +1,75 @@
+﻿@{
+    ViewBag.Title = "Intercom Management";
+}
+
+<h2>Intercom Management</h2>
+
+<!-- Common form for all actions -->
+<div class="row">
+    <div class="col-md-6">
+        <form method="post" asp-action="AcceptCall">
+            <h4>Accept Incoming Call</h4>
+            <div class="form-group">
+                <label for="ipAddress">IP Address</label>
+                <input type="text" class="form-control" id="ipAddress" name="ipAddress" placeholder="192.168.123.234" required />
+            </div>
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" class="form-control" id="username" name="username" placeholder="Hudson" required />
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" class="form-control" id="password" name="password" placeholder="Saul" required />
+            </div>
+            <button type="submit" class="btn btn-success">Accept Call</button>
+        </form>
+    </div>
+
+    <div class="col-md-6">
+        <form method="post" asp-action="CancelCall">
+            <h4>Cancel Active Call</h4>
+            <div class="form-group">
+                <label for="ipAddress">IP Address</label>
+                <input type="text" class="form-control" id="ipAddress" name="ipAddress" placeholder="192.168.11.22" required />
+            </div>
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" class="form-control" id="username" name="username" placeholder="Ian" required />
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" class="form-control" id="password" name="password" placeholder="Fraiser" required />
+            </div>
+            <button type="submit" class="btn btn-danger">Cancel Call</button>
+        </form>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-6">
+        <form method="post" asp-action="DeclineCall">
+            <h4>Decline Incoming Call</h4>
+            <div class="form-group">
+                <label for="ipAddress">IP Address</label>
+                <input type="text" class="form-control" id="ipAddress" name="ipAddress" placeholder="172.16.9.222" required />
+            </div>
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" class="form-control" id="username" name="username" placeholder="SD" required />
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" class="form-control" id="password" name="password" placeholder="Chargers" required />
+            </div>
+            <button type="submit" class="btn btn-warning">Decline Call</button>
+        </form>
+    </div>
+</div>
+
+<!-- Display success messages -->
+@if (ViewBag.Message != null)
+{
+    <div class="alert alert-success mt-3">
+        @ViewBag.Message
+    </div>
+}

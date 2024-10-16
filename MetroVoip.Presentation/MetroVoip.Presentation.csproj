@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\MetroVoip.Business\MetroVoip.Business.csproj" />
+    <ProjectReference Include="..\MetroVoip.Data\MetroVoip.Inrastructure.csproj" />
   </ItemGroup>
 
 </Project>

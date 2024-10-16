@@ -14,7 +14,8 @@ namespace MetroVoip.Presentation
             builder.Services.AddControllersWithViews();
             //builder.Services.AddSingleton<IDriverCommunicationService, DriverCommunicationService>();
             //builder.Services.AddSingleton<IPassengerCommunicationService, PassengerCommunicationService>();
-
+            builder.Services.AddHttpClient();
+            builder.Services.AddScoped<ICommendIntercomService, CommendIntercomService>();
             builder.Services.AddCors(builder =>
             {
                 builder.AddPolicy("AllowAll", options =>
@@ -45,7 +46,7 @@ namespace MetroVoip.Presentation
 
             app.MapControllerRoute(
                 name: "default",
-                pattern: "{controller=WebRTC}/{action=Manager}/{id?}");
+                pattern: "{controller=Home}/{action=Index}/{id?}");
 
             app.MapHub<VoiceChatHub>("/voiceChatHub");
             app.UseCors("AllowAll");
