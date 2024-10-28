@@ -10,39 +10,18 @@ namespace MetroVoip.Presentation.Controllers
         {
             _intercomService = intercomService;
         }
-        public IActionResult Index()
-        {
-            return View();
-        }
-
-        [HttpGet]
-        public IActionResult AcceptCall()
-        {
-            return View();
-        }
-
         [HttpPost]
-        public async Task<IActionResult> AcceptCall(string ipAddress, string username, string password)
+        public async Task<IActionResult> StopCall()
         {
-            await _intercomService.AcceptIncomingCall(ipAddress, username, password);
-            ViewBag.Message = "Arama kabul edildi.";
-            return View();
-        }
-
-        [HttpPost]
-        public async Task<IActionResult> CancelCall(string ipAddress, string username, string password)
-        {
-            await _intercomService.CancelCall(ipAddress, username, password);
-            ViewBag.Message = "Arama iptal edildi.";
-            return View("Index");
-        }
-
-        [HttpPost]
-        public async Task<IActionResult> DeclineCall(string ipAddress, string username, string password)
-        {
-            await _intercomService.DeclineCall(ipAddress, username, password);
-            ViewBag.Message = "Arama reddedildi.";
-            return View("Index");
+            try
+            {
+                await _intercomService.StopCallAsync();
+                return Json(new { success = true, message = "Görüşme sonlandırıldı." });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = $"Hata: {ex.Message}" });
+            }
         }
     }
 }

@@ -2,8 +2,10 @@
 {
     public interface IDriverCommunicationService
     {
-        Task StartSpeakingWithPassenger(int kabinId);
+        Task StartSpeakingWithPassenger();
         Task StopSpeakingWithPassenger(int kabinId);
         Task StartListeningPassenger(int kabinId);
+        Task StartSipCall();
+        void EndSipCall();
     }
 }

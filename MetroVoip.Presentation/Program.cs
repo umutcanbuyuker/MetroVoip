@@ -12,7 +12,7 @@ namespace MetroVoip.Presentation
 
             // Add services to the container.
             builder.Services.AddControllersWithViews();
-            //builder.Services.AddSingleton<IDriverCommunicationService, DriverCommunicationService>();
+            builder.Services.AddSingleton<IDriverCommunicationService, DriverCommunicationService>();
             //builder.Services.AddSingleton<IPassengerCommunicationService, PassengerCommunicationService>();
             builder.Services.AddHttpClient();
             builder.Services.AddScoped<ICommendIntercomService, CommendIntercomService>();
