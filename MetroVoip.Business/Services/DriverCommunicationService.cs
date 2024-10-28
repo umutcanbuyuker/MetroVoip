@@ -1,30 +1,19 @@
 ﻿using MetroVoip.Business.Interfaces;
-using NAudio.CoreAudioApi;
 using NAudio.Wave;
-using System.ComponentModel;
 using System.Net;
 using System.Net.Sockets;
-using System.Runtime.Intrinsics.Arm;
 using System.Text;
-using System.Text.RegularExpressions;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace MetroVoip.Business.Services
 {
     public class DriverCommunicationService : IDriverCommunicationService
     {
         private UdpClient udpClient;
-        private UdpClient rtpClient;
-        private IPEndPoint rtpEndPoint;
         private WaveInEvent waveIn;
         private const string ServerIP = "10.1.58.85";
         private const int ServerPort = 5060;
         private int toTag;
-        public DriverCommunicationService()
-        {
-            rtpClient = new UdpClient(4074); // Local RTP port
-            rtpEndPoint = new IPEndPoint(IPAddress.Parse("10.1.58.85"), 16384); // Remote RTP endpoint
-        }
+        private MemoryStream audioBuffer;
         // Cabin's IPs
         private static Dictionary<int, string> kabinIPs = new Dictionary<int, string>
         {
@@ -186,14 +175,99 @@ a=ssrc:1903311638 cname:62d42ead13086271
                         await udpClient.SendAsync(ackMessageBytes, ackMessageBytes.Length);
                         Console.WriteLine("SIP ACK message sent.");
 
+                        await StartAudioTransmission();
+
                         break;
                     }
                 }
             }
         }
 
+        private async Task StartAudioTransmission()
+        {
+            InitializeAudioCapture();
 
+            uint timestamp = 800; // Example timestamp; update as needed
+            ushort sequenceNumber = 1; // Start with sequence number 1
 
+            while (true) // Loop to continuously send RTP packets
+            {
+                // Replace this with your actual audio data retrieval logic
+                //byte[] audioData = new byte[160];
+
+                byte[] audioData = GetAudioData();
+                // Send RTP packet
+                if (audioData.Length > 0)
+                {
+                    // Send RTP packet
+                    await SendRtpPacket(audioData, timestamp, sequenceNumber);
+
+                    // Increment the timestamp and sequence number for the next packet
+                    timestamp += (uint)(audioData.Length * 1000000 / 8000); // Adjust according to your sampling rate
+                    sequenceNumber++;
+                }
+
+                // Add a delay as needed (e.g., based on your audio frame duration)
+                await Task.Delay(20); // Adjust this delay to control the sending rate
+            }
+        }
+
+        private void InitializeAudioCapture()
+        {
+            waveIn = new WaveInEvent
+            {
+                WaveFormat = new WaveFormat(8000, 16, 1) // 8000 Hz, 16-bit, mono
+            };
+            waveIn.DataAvailable += OnDataAvailable;
+            audioBuffer = new MemoryStream();
+            waveIn.StartRecording();
+        }
+
+        private void OnDataAvailable(object sender, WaveInEventArgs e)
+        {
+            audioBuffer.Write(e.Buffer, 0, e.BytesRecorded);
+        }
+
+        private byte[] GetAudioData()
+        {
+            // Get the audio data from the buffer
+            byte[] data = audioBuffer.ToArray();
+            audioBuffer.SetLength(0); // Clear the buffer after retrieval
+            return data;
+        }
+
+        private async Task SendRtpPacket(byte[] audioData, uint timestamp, ushort sequenceNumber)
+        {
+            using (UdpClient rtpUdpClient = new UdpClient())
+            {
+                rtpUdpClient.Connect("10.1.58.85", 16384);
+                // Construct RTP header
+                byte[] rtpHeader = new byte[12];
+
+                rtpHeader[0] = 0x80; // Version 2, no padding, no extension, 0 CSRC
+                rtpHeader[1] = 0x08; // Payload type (8 for PCMA)
+                rtpHeader[2] = (byte)(sequenceNumber >> 8); // Sequence number (high byte)
+                rtpHeader[3] = (byte)(sequenceNumber & 0xFF); // Sequence number (low byte)
+                rtpHeader[4] = (byte)(timestamp >> 24); // Timestamp (high byte)
+                rtpHeader[5] = (byte)((timestamp >> 16) & 0xFF); // Timestamp (mid byte)
+                rtpHeader[6] = (byte)((timestamp >> 8) & 0xFF); // Timestamp (mid low byte)
+                rtpHeader[7] = (byte)(timestamp & 0xFF); // Timestamp (low byte)
+                rtpHeader[8] = 0; // SSRC (high byte)
+                rtpHeader[9] = 0; // SSRC (mid high byte)
+                rtpHeader[10] = 0; // SSRC (mid low byte)
+                rtpHeader[11] = 0; // SSRC (low byte)
+
+                // Combine RTP header and audio data
+                byte[] rtpPacket = new byte[rtpHeader.Length + audioData.Length];
+                Buffer.BlockCopy(rtpHeader, 0, rtpPacket, 0, rtpHeader.Length);
+                Buffer.BlockCopy(audioData, 0, rtpPacket, rtpHeader.Length, audioData.Length);
+
+                // Send RTP packet to the intercom device
+                await rtpUdpClient.SendAsync(rtpPacket, rtpPacket.Length);
+                Console.WriteLine("RTP packet sent.");
+            }
+        }
+        
         public async void EndSipCall()
         {
             try
