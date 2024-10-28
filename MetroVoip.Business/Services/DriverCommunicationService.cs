@@ -224,35 +224,5 @@ a=ssrc:1903311638 cname:62d42ead13086271
             }
         }
 
-
-        private async Task StartSendingAudioAsync()
-        {
-            try
-            {
-                // Simulated audio data (replace with actual audio source)
-                byte[] audioData = new byte[160]; // Example for PCM data (20ms of audio at 8000Hz, 16-bit mono)
-
-                while (true) // Replace with actual condition to control the sending
-                {
-                    // TODO: Capture audio data here and fill audioData byte array
-                    // Example: audioData = await CaptureAudioDataAsync();
-
-                    // Send RTP packet
-                    await rtpClient.SendAsync(audioData, audioData.Length, rtpEndPoint);
-                    Console.WriteLine("RTP packet sent.");
-
-                    // Delay to simulate audio capture timing (e.g., 20ms)
-                    await Task.Delay(20);
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Error sending RTP: " + ex.Message);
-            }
-            finally
-            {
-                rtpClient.Close();
-            }
-        }
     }
 }
