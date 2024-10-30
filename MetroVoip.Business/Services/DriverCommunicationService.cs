@@ -9,7 +9,11 @@ namespace MetroVoip.Business.Services
     public class DriverCommunicationService : IDriverCommunicationService
     {
         private UdpClient udpClient;
+        private UdpClient rtpUdpClient;
         private WaveInEvent waveIn;
+        private ushort sequenceNumber;
+        private uint timestamp;
+
         private const string ServerIP = "10.1.58.85";
         private const int ServerPort = 5060;
         private int toTag;
@@ -164,7 +168,7 @@ a=ssrc:1903311638 cname:62d42ead13086271
                         string sipAckMessage = "ACK sip:23@10.1.58.85:5060 SIP/2.0\r\n" +
                      "Via: SIP/2.0/UDP 10.1.58.86:65119;branch=z9hG4bKPjf6c3ea54c9c54f0c806a151483cd4e90\r\n" +
                      "From: <sip:admin@10.1.58.85>;tag=6930f97b2a5e4cd9b45c643312f1b696\r\n" +
-                     "To: <sip:23@10.1.58.85;tag="+toTag+">\r\n" +
+                     "To: <sip:23@10.1.58.85;tag=" + toTag + ">\r\n" +
                      "Call-ID: 00a57ac84c7f4c29aece388f5bee29b3\r\n" +
                      "CSeq: 2843 ACK\r\n" +
                      "Contact: <sip:admin@10.1.58.86:65119;ob>\r\n\r\n";
@@ -183,91 +187,105 @@ a=ssrc:1903311638 cname:62d42ead13086271
             }
         }
 
-        private async Task StartAudioTransmission()
+        public async Task StartAudioTransmission()
         {
-            InitializeAudioCapture();
+            // UdpClient'ı burada oluşturun ve yapılandırın
+            rtpUdpClient = new UdpClient();
+            await Task.Run(() => rtpUdpClient.Connect("10.1.58.85", 16384)); // Hedef IP ve port
 
-            uint timestamp = 800; // Example timestamp; update as needed
-            ushort sequenceNumber = 1; // Start with sequence number 1
-
-            while (true) // Loop to continuously send RTP packets
-            {
-                // Replace this with your actual audio data retrieval logic
-                //byte[] audioData = new byte[160];
-
-                byte[] audioData = GetAudioData();
-                // Send RTP packet
-                if (audioData.Length > 0)
-                {
-                    // Send RTP packet
-                    await SendRtpPacket(audioData, timestamp, sequenceNumber);
-
-                    // Increment the timestamp and sequence number for the next packet
-                    timestamp += (uint)(audioData.Length * 1000000 / 8000); // Adjust according to your sampling rate
-                    sequenceNumber++;
-                }
-
-                // Add a delay as needed (e.g., based on your audio frame duration)
-                await Task.Delay(20); // Adjust this delay to control the sending rate
-            }
-        }
-
-        private void InitializeAudioCapture()
-        {
             waveIn = new WaveInEvent
             {
-                WaveFormat = new WaveFormat(8000, 16, 1) // 8000 Hz, 16-bit, mono
+                WaveFormat = new WaveFormat(8000, 16, 1) // 8 kHz, 16 bit, mono
             };
-            waveIn.DataAvailable += OnDataAvailable;
-            audioBuffer = new MemoryStream();
-            waveIn.StartRecording();
+            waveIn.DataAvailable += WaveIn_DataAvailable; // Ses verisi geldiğinde çağrılacak metod
+            waveIn.StartRecording(); // Ses kaydını başlat
+
+            Console.WriteLine("Audio transmission started. Press Enter to stop.");
+            Console.ReadLine(); // Kullanıcıdan durdurma için girdi bekle
+
+            waveIn.StopRecording(); // Ses kaydını durdur
+            waveIn.Dispose();
+            rtpUdpClient.Dispose();
+            Console.WriteLine("Audio transmission completed.");
         }
 
-        private void OnDataAvailable(object sender, WaveInEventArgs e)
+        private async void WaveIn_DataAvailable(object sender, WaveInEventArgs e)
         {
-            audioBuffer.Write(e.Buffer, 0, e.BytesRecorded);
+            // 16-bit PCM formatındaki ham ses verisini 8-bit G.711 PCMA'ya dönüştür
+            byte[] g711Data = Convert16BitPcmToG711(e.Buffer);
+
+            // Dönüştürülmüş veriyi RTP paketiyle gönder
+            await SendRtpPacket(g711Data, timestamp, sequenceNumber);
+
+            // Timestamp ve sequence number'ı güncelle
+            timestamp += (uint)g711Data.Length; // Bu örnekte her byte başına 1 artış
+            sequenceNumber++;
         }
 
-        private byte[] GetAudioData()
+        private byte[] Convert16BitPcmToG711(byte[] pcmData)
         {
-            // Get the audio data from the buffer
-            byte[] data = audioBuffer.ToArray();
-            audioBuffer.SetLength(0); // Clear the buffer after retrieval
-            return data;
+            int length = pcmData.Length / 2;
+            byte[] g711Data = new byte[length];
+            for (int i = 0; i < length; i++)
+            {
+                short sample = (short)((pcmData[i * 2 + 1] << 8) | pcmData[i * 2]);
+                g711Data[i] = LinearToALawSample(sample);
+            }
+            return g711Data;
+        }
+
+        private byte LinearToALawSample(short sample)
+        {
+            // G.711 PCMA dönüştürme işlemi burada yapılır
+            int sign = (sample >> 8) & 0x80;
+            if (sign != 0) sample = (short)-sample;
+            if (sample > 32635) sample = 32635;
+
+            int exponent = 7;
+            for (int expMask = 0x4000; (sample & expMask) == 0 && exponent > 0; exponent--, expMask >>= 1) ;
+            int mantissa = (sample >> ((exponent == 0) ? 4 : (exponent + 3))) & 0x0F;
+            byte alawByte = (byte)(sign | (exponent << 4) | mantissa);
+            return (byte)~alawByte;
         }
 
         private async Task SendRtpPacket(byte[] audioData, uint timestamp, ushort sequenceNumber)
         {
-            using (UdpClient rtpUdpClient = new UdpClient())
-            {
-                rtpUdpClient.Connect("10.1.58.85", 16384);
-                // Construct RTP header
-                byte[] rtpHeader = new byte[12];
+            // RTP header oluşturma
+            byte[] rtpHeader = new byte[12];
+            rtpHeader[0] = 0x80; // Version 2, no padding, no extension, 0 CSRC 
+            rtpHeader[1] = 0x08; // Payload type (8 for PCMA)
+            rtpHeader[1] |= 0x80; // Set Marker bit to 1
+            rtpHeader[2] = (byte)(sequenceNumber >> 8); // Sequence number (high byte)
+            rtpHeader[3] = (byte)(sequenceNumber & 0xFF); // Sequence number (low byte)
+            rtpHeader[4] = (byte)(timestamp >> 24); // Timestamp (high byte)
+            rtpHeader[5] = (byte)((timestamp >> 16) & 0xFF); // Timestamp (mid byte)
+            rtpHeader[6] = (byte)((timestamp >> 8) & 0xFF); // Timestamp (mid low byte)
+            rtpHeader[7] = (byte)(timestamp & 0xFF); // Timestamp (low byte)
 
-                rtpHeader[0] = 0x80; // Version 2, no padding, no extension, 0 CSRC
-                rtpHeader[1] = 0x08; // Payload type (8 for PCMA)
-                rtpHeader[2] = (byte)(sequenceNumber >> 8); // Sequence number (high byte)
-                rtpHeader[3] = (byte)(sequenceNumber & 0xFF); // Sequence number (low byte)
-                rtpHeader[4] = (byte)(timestamp >> 24); // Timestamp (high byte)
-                rtpHeader[5] = (byte)((timestamp >> 16) & 0xFF); // Timestamp (mid byte)
-                rtpHeader[6] = (byte)((timestamp >> 8) & 0xFF); // Timestamp (mid low byte)
-                rtpHeader[7] = (byte)(timestamp & 0xFF); // Timestamp (low byte)
-                rtpHeader[8] = 0; // SSRC (high byte)
-                rtpHeader[9] = 0; // SSRC (mid high byte)
-                rtpHeader[10] = 0; // SSRC (mid low byte)
-                rtpHeader[11] = 0; // SSRC (low byte)
+            uint ssrc = 0x3f2d5269; // SSRC değeri
+            rtpHeader[8] = (byte)(ssrc >> 24); // SSRC (high byte)
+            rtpHeader[9] = (byte)((ssrc >> 16) & 0xFF); // SSRC (mid high byte)
+            rtpHeader[10] = (byte)((ssrc >> 8) & 0xFF); // SSRC (mid low byte)
+            rtpHeader[11] = (byte)(ssrc & 0xFF); // SSRC (low byte)
 
-                // Combine RTP header and audio data
-                byte[] rtpPacket = new byte[rtpHeader.Length + audioData.Length];
-                Buffer.BlockCopy(rtpHeader, 0, rtpPacket, 0, rtpHeader.Length);
-                Buffer.BlockCopy(audioData, 0, rtpPacket, rtpHeader.Length, audioData.Length);
+            // RTP header ve ses verilerini birleştir
+            byte[] rtpPacket = new byte[rtpHeader.Length + audioData.Length];
+            Buffer.BlockCopy(rtpHeader, 0, rtpPacket, 0, rtpHeader.Length);
+            Buffer.BlockCopy(audioData, 0, rtpPacket, rtpHeader.Length, audioData.Length);
 
-                // Send RTP packet to the intercom device
-                await rtpUdpClient.SendAsync(rtpPacket, rtpPacket.Length);
-                Console.WriteLine("RTP packet sent.");
-            }
+            // RTP paketini gönder
+            await rtpUdpClient.SendAsync(rtpPacket, rtpPacket.Length);
+
+            // Hata ayıklama için gönderilen bilgileri yazdır
+            Console.WriteLine($"RTP packet sent. Sequence Number: {sequenceNumber}, Timestamp: {timestamp}, SSRC: {ssrc:X}");
         }
-        
+
+
+
+
+
+
+
         public async void EndSipCall()
         {
             try
@@ -278,7 +296,7 @@ a=ssrc:1903311638 cname:62d42ead13086271
                     string byeMessage = "BYE sip:23@10.1.58.85 SIP/2.0\r\n" +
                        "Via: SIP/2.0/UDP 10.1.58.86:65119;branch=z9hG4bKPjf6c3ea54c9c54f0c806a151483cd4e90\r\n" +
                        "From: <sip:admin@10.1.58.85>;tag=6930f97b2a5e4cd9b45c643312f1b696\r\n" +
-                       "To: <sip:23@10.1.58.85>;tag="+toTag+">\r\n" + // toTag değeri burada dinamik olarak eklenebilir
+                       "To: <sip:23@10.1.58.85>;tag=" + toTag + ">\r\n" + // toTag değeri burada dinamik olarak eklenebilir
                        "Call-ID: 00a57ac84c7f4c29aece388f5bee29b3\r\n" +
                        "CSeq: 2844 BYE\r\n" +
                        "Contact: <sip:admin@10.1.58.86:65119;ob>\r\n" +
